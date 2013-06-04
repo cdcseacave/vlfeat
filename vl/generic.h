@@ -402,5 +402,16 @@ vl_free (void *ptr)
   (vl_get_state()->free_func)(ptr) ;
 }
 
+#if (defined(VL_OS_LINUX) || defined(VL_OS_MACOSX)) && defined(VL_COMPILER_GNUC)
+
+void vl_constructor () __attribute__ ((constructor)) ;
+void vl_destructor () __attribute__ ((destructor))  ;
+
+#elif defined(VL_OS_WIN)
+
+void vl_constructor () ;
+void vl_destructor () ;
+
+#endif
 /* VL_GENERIC_H */
 #endif

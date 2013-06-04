@@ -910,13 +910,9 @@ vl_thread_specific_state_delete (VlThreadSpecificState * self)
 
 #if (defined(VL_OS_LINUX) || defined(VL_OS_MACOSX)) && defined(VL_COMPILER_GNUC)
 
-static void vl_constructor () __attribute__ ((constructor)) ;
-static void vl_destructor () __attribute__ ((destructor))  ;
-
 #elif defined(VL_OS_WIN)
 
-static void vl_constructor () ;
-static void vl_destructor () ;
+#ifdef VL_BUILD_DLL
 
 BOOL WINAPI DllMain(
     HINSTANCE hinstDLL,  // handle to DLL module
@@ -956,8 +952,10 @@ BOOL WINAPI DllMain(
 
 #endif
 
+#endif
+
 /** @internal @brief Initialize VLFeat */
-static void
+void
 vl_constructor ()
 {
   VlState * state ;
@@ -1021,7 +1019,7 @@ vl_constructor ()
 }
 
 /** @internal @brief Destruct VLFeat */
-static void
+void
 vl_destructor ()
 {
   VlState * state ;

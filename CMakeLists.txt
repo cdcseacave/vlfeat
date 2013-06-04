@@ -66,3 +66,6 @@ ADD_DEFINITIONS(${VLFeat_DEFINITIONS})
 
 # Add SfM libraries
 ADD_SUBDIRECTORY(vl)
+
+# Add applications
+ADD_SUBDIRECTORY(src)

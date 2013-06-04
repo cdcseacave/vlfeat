@@ -210,6 +210,9 @@ main(int argc, char **argv)
     break ;                                                     \
 }
 
+  /* Initialize once for each new process */
+  vl_constructor () ;
+
   /* -----------------------------------------------------------------
    *                                                     Parse options
    * -------------------------------------------------------------- */
@@ -426,7 +429,7 @@ main(int argc, char **argv)
     vl_bool          first ;
 
     double           *ikeys = 0 ;
-    int              nikeys = 0, ikeys_size = 0 ;
+    int              nikeys = 0, ikeys_size = 0, totalkeys = 0 ;
 
     /* ...............................................................
      *                                                 Determine files
@@ -640,6 +643,7 @@ main(int argc, char **argv)
     /* ...............................................................
      *                                             Process each octave
      * ............................................................ */
+	totalkeys = 0;
     i     = 0 ;
     first = 1 ;
     while (1) {
@@ -681,6 +685,7 @@ main(int argc, char **argv)
         keys  = vl_sift_get_keypoints     (filt) ;
         nkeys = vl_sift_get_nkeypoints (filt) ;
         i     = 0 ;
+		totalkeys += nkeys;
 
         if (verbose > 1) {
           printf ("sift: detected %d (unoriented) keypoints\n", nkeys) ;
@@ -769,6 +774,8 @@ main(int argc, char **argv)
     /* ...............................................................
      *                                                       Finish up
      * ............................................................ */
+	if (verbose)
+		printf("  nkeys       = %d\n", totalkeys) ;
 
     if (met.active) {
       fprintf(met.file, "<sift\n") ;
@@ -831,6 +838,17 @@ main(int argc, char **argv)
       exit_code = 1 ;
     }
   }
+
+  /* Do thread-specific cleanup */
+//#if ! defined(VL_DISABLE_THREADS) && defined(VL_THREADS_WIN)
+//  VlState * state = vl_get_state() ;
+//  VlThreadSpecificState * threadState = (VlThreadSpecificState*) TlsGetValue(state->tlsIndex) ;
+//  if (threadState) {
+//	  vl_thread_specific_state_delete (threadState) ;
+//  }
+//#endif
+  /* Perform any necessary cleanup */
+  vl_destructor () ;
 
   /* quit */
   return exit_code ;
