@@ -83,7 +83,7 @@ of each cell must also be rearranged. This can be done by
 the permutation obtaiend by ::vl_hog_get_permutation.
 
 Furthermore, @ref hog.h suppots computing HOG features not from
-images but from vector fields ::vl_
+images but from vector fields.
 
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  -->
 @section hog-tech Technical details
@@ -386,24 +386,24 @@ vl_hog_get_permutation (VlHog const * self)
 }
 
 /* ---------------------------------------------------------------- */
-/** @brief Set wether to use bilinear interpolation assignments
+/** @brief Turn bilinear interpolation of assignments on or off
  ** @param self HOG object.
- ** @param @c true if orientations should be assigned with bilinear interpolation.
- **/
-
-vl_bool
-vl_hog_get_use_bilinear_orientation_assignments (VlHog const * self) {
-  return self->useBilinearOrientationAssigment ;
-}
-
-/** @brief Get wether bilinear interpolation assignments are used
- ** @param self HOG object.
- ** @return @c true if orientations are be assigned with bilinear interpolation.
+ ** @param x @c true if orientations should be assigned with bilinear interpolation.
  **/
 
 void
 vl_hog_set_use_bilinear_orientation_assignments (VlHog * self, vl_bool x) {
   self->useBilinearOrientationAssigment = x ;
+}
+
+/** @brief Tell whether assignments use bilinear interpolation or not
+ ** @param self HOG object.
+ ** @return @c true if orientations are be assigned with bilinear interpolation.
+ **/
+
+vl_bool
+vl_hog_get_use_bilinear_orientation_assignments (VlHog const * self) {
+  return self->useBilinearOrientationAssigment ;
 }
 
 /* ---------------------------------------------------------------- */
@@ -465,7 +465,7 @@ vl_hog_render (VlHog const * self,
             descriptor[(k + 3 * self->numOrientations) * hogStride] ;
             break ;
           default:
-            assert(0) ;
+            abort() ;
         }
         maxWeight = VL_MAX(weight, maxWeight) ;
         minWeight = VL_MIN(weight, minWeight);
@@ -615,8 +615,8 @@ vl_hog_put_image (VlHog * self,
   /* compute gradients and map the to HOG cells by bilinear interpolation */
   for (y = 1 ; y < (signed)height - 1 ; ++y) {
     for (x = 1 ; x < (signed)width - 1 ; ++x) {
-      float gradx ;
-      float grady ;
+      float gradx = 0 ;
+      float grady = 0 ;
       float grad ;
       float orientationWeights [2] = {0,0} ;
       vl_index orientationBins [2] = {-1,-1} ;
@@ -693,7 +693,7 @@ vl_hog_put_image (VlHog * self,
         orientation = orientationBins[o] ;
         if (orientation < 0) continue ;
 
-        /*  (x - (w-1)/2) / w = (x + 0.5)/w - 0.5 */        
+        /*  (x - (w-1)/2) / w = (x + 0.5)/w - 0.5 */
         hx = (x + 0.5) / cellSize - 0.5 ;
         hy = (y + 0.5) / cellSize - 0.5 ;
         binx = vl_floor_f(hx) ;
@@ -730,18 +730,17 @@ vl_hog_put_image (VlHog * self,
 /* ---------------------------------------------------------------- */
 /** @brief Process features starting from a field in polar notation
  ** @param self HOG object.
- ** @param modulus modulus of the vectors at each image location.
- ** @param angle angle of the vectors at each image location.
- ** @param directed wrap the angle at 2pi (directed) or pi (undirected).
+ ** @param modulus image gradient modulus.
+ ** @param angle image gradient angle.
+ ** @param directed wrap the gradient angles at 2pi (directed) or pi (undirected).
  ** @param width image width.
  ** @param height image height.
- ** @param numChannels number of image channles.
  ** @param cellSize size of a HOG cell.
  **
  ** The function behaves like ::vl_hog_put_image, but foregoes the internal
- ** computation of the gradient field allowing the user to specify
- ** their own. Angles are measure clockwise (y axis pointing downwards)
- ** starting from the x axis (pointing right).
+ ** computation of the gradient field, allowing the user to specify
+ ** their own. Angles are measure clockwise, the y axis pointing downwards,
+ ** starting from the x axis (pointing to the right).
  **/
 
 void vl_hog_put_polar_field (VlHog * self,
@@ -786,9 +785,9 @@ void vl_hog_put_polar_field (VlHog * self,
       bino = vl_floor_f(ho) ;
       wo2 = ho - bino ;
       wo1 = 1.0f - wo2 ;
-      
+
       while (bino < 0) { bino += self->numOrientations * 2 ; }
-      
+
       if (self->useBilinearOrientationAssigment) {
         orientationBins[0] = bino % period ;
         orientationBins[1] = (bino + 1) % period ;
@@ -808,10 +807,10 @@ void vl_hog_put_polar_field (VlHog * self,
          has hx = 0, which gradually increases to 1 moving to the next
          center.
          */
-        
+
         orientation = orientationBins[o] ;
         if (orientation < 0) continue ;
-        
+
         hx = (x + 0.5) / cellSize - 0.5 ;
         hy = (y + 0.5) / cellSize - 0.5 ;
         binx = vl_floor_f(hx) ;
@@ -820,14 +819,14 @@ void vl_hog_put_polar_field (VlHog * self,
         wy2 = hy - biny ;
         wx1 = 1.0 - wx2 ;
         wy1 = 1.0 - wy2 ;
-        
+
         wx1 *= orientationWeights[o] ;
         wx2 *= orientationWeights[o] ;
         wy1 *= orientationWeights[o] ;
         wy2 *= orientationWeights[o] ;
-        
+
         /*VL_PRINTF("%d %d - %d %d %f %f - %f %f %f %f - %d \n ",x,y,binx,biny,hx,hy,wx1,wx2,wy1,wy2,o);*/
-        
+
         if (binx >= 0 && biny >=0) {
           at(binx,biny,orientation) += thisModulus * wx1 * wy1 ;
         }
@@ -844,7 +843,6 @@ void vl_hog_put_polar_field (VlHog * self,
     } /* next x */
   } /* next y */
 }
-
 
 /* ---------------------------------------------------------------- */
 /** @brief Extract HOG features

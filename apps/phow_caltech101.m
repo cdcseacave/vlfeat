@@ -1,4 +1,4 @@
-function phow_caltech101
+function phow_caltech101()
 % PHOW_CALTECH101 Image classification in the Caltech-101 dataset
 %   This program demonstrates how to use VLFeat to construct an image
 %   classifier on the Caltech-101 data. The classifier uses PHOW
@@ -43,7 +43,13 @@ function phow_caltech101
 %     label = model.classify(model, im) ;
 %
 
-% AUTORIGHTS
+% Author: Andrea Vedaldi
+
+% Copyright (C) 2011-2013 Andrea Vedaldi
+% All rights reserved.
+%
+% This file is part of the VLFeat library and is made available under
+% the terms of the BSD license (see the COPYING file).
 
 conf.calDir = 'data/caltech-101' ;
 conf.dataDir = 'data/' ;
@@ -56,7 +62,11 @@ conf.numSpatialX = [2 4] ;
 conf.numSpatialY = [2 4] ;
 conf.quantizer = 'kdtree' ;
 conf.svm.C = 10 ;
-conf.svm.solver = 'pegasos' ;
+
+conf.svm.solver = 'sdca' ;
+%conf.svm.solver = 'sgd' ;
+%conf.svm.solver = 'liblinear' ;
+
 conf.svm.biasMultiplier = 1 ;
 conf.phowOpts = {'Step', 3} ;
 conf.clobber = false ;
@@ -155,7 +165,7 @@ if ~exist(conf.vocabPath) || conf.clobber
   descrs = single(descrs) ;
 
   % Quantize the descriptors to get the visual words
-  vocab = vl_kmeans(descrs, conf.numWords, 'verbose', 'algorithm', 'elkan') ;
+  vocab = vl_kmeans(descrs, conf.numWords, 'verbose', 'algorithm', 'elkan', 'MaxNumIterations', 50) ;
   save(conf.vocabPath, 'vocab') ;
 else
   load(conf.vocabPath) ;
@@ -198,26 +208,28 @@ psix = vl_homkermap(hists, 1, 'kchi2', 'gamma', .5) ;
 
 if ~exist(conf.modelPath) || conf.clobber
   switch conf.svm.solver
-    case 'pegasos'
+    case {'sgd', 'sdca'}
       lambda = 1 / (conf.svm.C *  length(selTrain)) ;
       w = [] ;
-      % for ci = 1:length(classes)
       parfor ci = 1:length(classes)
         perm = randperm(length(selTrain)) ;
         fprintf('Training model for class %s\n', classes{ci}) ;
         y = 2 * (imageClass(selTrain) == ci) - 1 ;
-        data = vl_maketrainingset(psix(:,selTrain(perm)), int8(y(perm))) ;
-        [w(:,ci) b(ci)] = vl_svmpegasos(data, lambda, ...
-                                        'MaxIterations', 50/lambda, ...
-                                        'BiasMultiplier', conf.svm.biasMultiplier) ;
+        [w(:,ci) b(ci) info] = vl_svmtrain(psix(:, selTrain(perm)), y(perm), lambda, ...
+          'Solver', conf.svm.solver, ...
+          'MaxNumIterations', 50/lambda, ...
+          'BiasMultiplier', conf.svm.biasMultiplier, ...
+          'Epsilon', 1e-3);
       end
+
     case 'liblinear'
       svm = train(imageClass(selTrain)', ...
                   sparse(double(psix(:,selTrain))),  ...
                   sprintf(' -s 3 -B %f -c %f', ...
                           conf.svm.biasMultiplier, conf.svm.C), ...
                   'col') ;
-      w = svm.w' ;
+      w = svm.w(:,1:end-1)' ;
+      b =  svm.w(:,end)' ;
   end
 
   model.b = conf.svm.biasMultiplier * b ;
@@ -273,14 +285,14 @@ numWords = size(model.vocab, 2) ;
 % get PHOW features
 [frames, descrs] = vl_phow(im, model.phowOpts{:}) ;
 
-% quantize appearance
+% quantize local descriptors into visual words
 switch model.quantizer
   case 'vq'
     [drop, binsa] = min(vl_alldist(model.vocab, single(descrs)), [], 1) ;
   case 'kdtree'
     binsa = double(vl_kdtreequery(model.kdtree, model.vocab, ...
                                   single(descrs), ...
-                                  'MaxComparisons', 15)) ;
+                                  'MaxComparisons', 50)) ;
 end
 
 for i = 1:length(model.numSpatialX)
@@ -302,7 +314,7 @@ function [className, score] = classify(model, im)
 % -------------------------------------------------------------------------
 
 hist = getImageDescriptor(model, im) ;
-psix = vl_homkermap(hist, 1, 'kchi2', 'period', .7) ;
+psix = vl_homkermap(hist, 1, 'kchi2', 'gamma', .5) ;
 scores = model.w' * psix + model.b' ;
 [score, best] = max(scores) ;
 className = model.classes{best} ;

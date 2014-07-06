@@ -17,6 +17,7 @@ the terms of the BSD license (see the COPYING file).
 #include <vl/covdet.h>
 #include <vl/mathop.h>
 #include <vl/sift.h>
+#include <vl/liop.h>
 
 #include <math.h>
 #include <assert.h>
@@ -28,10 +29,15 @@ enum {
   opt_double_image,
   opt_peak_threshold,
   opt_edge_threshold,
+  opt_laplacian_peak_threshold,
   opt_estimate_orientation,
   opt_estimate_affine_shape,
   opt_frames,
   opt_descriptor,
+  opt_liop_bins,
+  opt_liop_neighbours,
+  opt_liop_threshold,
+  opt_liop_radius,
   opt_patch_resolution,
   opt_patch_relative_smoothing,
   opt_patch_relative_extent,
@@ -45,6 +51,7 @@ vlmxOption  options [] = {
   {"DoubleImage",           1,   opt_double_image            },
   {"PeakThreshold",         1,   opt_peak_threshold          },
   {"EdgeThreshold",         1,   opt_edge_threshold          },
+  {"LaplacianPeakThreshold",1,   opt_laplacian_peak_threshold},
 
   {"EstimateOrientation",   1,   opt_estimate_orientation    },
   {"EstimateAffineShape",   1,   opt_estimate_affine_shape   },
@@ -52,6 +59,10 @@ vlmxOption  options [] = {
   {"Frames",                1,   opt_frames                  },
 
   {"Descriptor",            1,   opt_descriptor              },
+  {"LiopNumSpatialBins",    1,   opt_liop_bins               },
+  {"LiopNumNeighbours",     1,   opt_liop_neighbours         },
+  {"LiopIntensityThreshold",1,   opt_liop_threshold          },
+  {"LiopRadius",            1,   opt_liop_radius             },
   {"PatchResolution",       1,   opt_patch_resolution        },
   {"PatchRelativeExtent",   1,   opt_patch_relative_extent   },
   {"PatchRelativeSmoothing",1,   opt_patch_relative_smoothing},
@@ -65,19 +76,21 @@ typedef enum _VlCovDetDescritporType {
   VL_COVDET_DESC_NONE = 0,
   VL_COVDET_DESC_PATCH,
   VL_COVDET_DESC_SIFT,
+  VL_COVDET_DESC_LIOP,
   VL_COVDET_DESC_NUM
 } VlCovDetDescriptorType ;
 
 const char* vlCovDetDescriptorNames [VL_COVDET_DESC_NUM] =
 {
-  "None", "Patch", "SIFT"
+    "None", "Patch", "SIFT","LIOP"
 } ;
 
 VlEnumerator vlCovDetDescriptorTypes [VL_COVDET_DESC_NUM] =
 {
   {"None" ,   (vl_index)VL_COVDET_DESC_NONE             },
   {"Patch",   (vl_index)VL_COVDET_DESC_PATCH            },
-  {"SIFT",    (vl_index)VL_COVDET_DESC_SIFT             }
+  {"SIFT",    (vl_index)VL_COVDET_DESC_SIFT             },
+  {"LIOP",    (vl_index)VL_COVDET_DESC_LIOP             }
 } ;
 
 /** ------------------------------------------------------------------
@@ -105,7 +118,7 @@ _createArrayFromScaleSpace(VlScaleSpace const *ss)
   data_array = mxCreateCellMatrix(1, numOctaves);
   for (o = geom.firstOctave ; o <= geom.lastOctave ; ++o) {
     VlScaleSpaceOctaveGeometry oct = vl_scalespace_get_octave_geometry(ss, o) ;
-    float const * octave = vl_scalespace_get_level(ss, o, geom.octaveFirstSubdivision) ;
+    float const * octave = vl_scalespace_get_level_const(ss, o, geom.octaveFirstSubdivision) ;
     mwSize dims [3] = {oct.width, oct.height, numSubdivisions} ;
     mxArray * octave_array = mxCreateNumericArray(3, dims, mxSINGLE_CLASS, mxREAL) ;
     memcpy(mxGetData(octave_array),
@@ -128,7 +141,7 @@ _createArrayFromScaleSpace(VlScaleSpace const *ss)
     mxSetFieldByNumber(array, 0, 2, vlmxCreatePlainScalar((double)geom.octaveResolution)) ;
     mxSetFieldByNumber(array, 0, 3, vlmxCreatePlainScalar((double)geom.octaveFirstSubdivision)) ;
     mxSetFieldByNumber(array, 0, 4, vlmxCreatePlainScalar((double)geom.octaveLastSubdivision)) ;
-    mxSetFieldByNumber(array, 0, 5, vlmxCreatePlainScalar(geom.sigma0)) ;
+    mxSetFieldByNumber(array, 0, 5, vlmxCreatePlainScalar(geom.baseScale)) ;
     mxSetFieldByNumber(array, 0, 6, data_array);
     return array ;
   }
@@ -192,6 +205,7 @@ mexFunction(int nout, mxArray *out[],
   vl_index octaveResolution = -1 ;
   double edgeThreshold = -1 ;
   double peakThreshold = -1 ;
+  double lapPeakThreshold = -1 ;
 
   int descriptorType = -1 ;
   vl_index patchResolution = -1 ;
@@ -199,6 +213,11 @@ mexFunction(int nout, mxArray *out[],
   double patchRelativeSmoothing = -1 ;
   float *patch = NULL ;
   float *patchXY = NULL ;
+
+  vl_int liopNumSpatialBins = 6;
+  vl_int liopNumNeighbours = 4;
+  float liopRadius = 6.0;
+  float liopIntensityThreshold = VL_NAN_F ;
 
   double boundaryMargin = 2.0 ;
 
@@ -292,6 +311,12 @@ mexFunction(int nout, mxArray *out[],
         vlmxError(vlmxErrInvalidArgument, "PEAKTHRESHOLD must be a non-negative real.") ;
       }
       break ;
+        
+    case opt_laplacian_peak_threshold :
+      if (!vlmxIsPlainScalar(optarg) || (lapPeakThreshold = *mxGetPr(optarg)) < 0) {
+        vlmxError(vlmxErrInvalidArgument, "LAPLACIANPEAKTHRESHOLD must be a non-negative real.") ;
+      }
+      break ;
 
     case opt_patch_relative_smoothing :
       if (!vlmxIsPlainScalar(optarg) || (patchRelativeSmoothing = *mxGetPr(optarg)) < 0) {
@@ -309,6 +334,31 @@ mexFunction(int nout, mxArray *out[],
       if (!vlmxIsPlainScalar(optarg) || (patchResolution = (vl_index)*mxGetPr(optarg)) <= 0) {
         vlmxError(vlmxErrInvalidArgument, "PATCHRESOLUTION must be a positive integer.") ;
       }
+      break ;
+
+    case opt_liop_bins :
+      if (!vlmxIsPlainScalar(optarg) || (liopNumSpatialBins = (vl_int)*mxGetPr(optarg)) <= 0) {
+        vlmxError(vlmxErrInvalidArgument, "number of LIOPNUMSPATIALBINS is not a positive scalar.") ;
+      }
+      break ;
+
+    case opt_liop_neighbours :
+      if (!vlmxIsPlainScalar(optarg) || (liopNumNeighbours = (vl_int)*mxGetPr(optarg)) <= 0) {
+        vlmxError(vlmxErrInvalidArgument, "number of LIOPNUMNEIGHBOURS is not a positive scalar.") ;
+      }
+      break ;
+
+    case opt_liop_radius :
+      if (!vlmxIsPlainScalar(optarg) || (liopRadius = (float)*mxGetPr(optarg)) <= 0) {
+        vlmxError(vlmxErrInvalidArgument, "LIOPRADIUS must is not a positive scalar.") ;
+      }
+      break ;
+
+    case opt_liop_threshold :
+      if (!vlmxIsPlainScalar(optarg)) {
+        vlmxError(vlmxErrInvalidArgument, "LIOPINTENSITYTHRESHOLD is not a scalar.") ;
+      }
+      liopIntensityThreshold = *mxGetPr(optarg) ;
       break ;
 
     case opt_frames:
@@ -356,14 +406,22 @@ mexFunction(int nout, mxArray *out[],
       if (patchRelativeExtent < 0) patchRelativeExtent = 7.5 ;
       if (patchRelativeSmoothing < 0) patchRelativeSmoothing = 1 ;
       break ;
+
+    case VL_COVDET_DESC_LIOP :
+      if (patchResolution < 0)  patchResolution = 20 ;
+      if (patchRelativeExtent < 0) patchRelativeExtent = 4 ;
+      if (patchRelativeSmoothing < 0) patchRelativeSmoothing = 0.5 ;
+      break ;
   }
-
-
 
   if (patchResolution > 0) {
     vl_size w = 2*patchResolution + 1 ;
     patch = mxMalloc(sizeof(float) * w * w);
     patchXY = mxMalloc(2 * sizeof(float) * w * w);
+  }
+
+  if (descriptorType == VL_COVDET_DESC_LIOP && liopRadius > patchResolution) {
+    vlmxError(vlmxErrInconsistentData, "LIOPRADIUS is larger than PATCHRESOLUTION.") ;
   }
 
   /* -----------------------------------------------------------------
@@ -378,7 +436,8 @@ mexFunction(int nout, mxArray *out[],
     if (octaveResolution >= 0) vl_covdet_set_octave_resolution(covdet, octaveResolution) ;
     if (peakThreshold >= 0) vl_covdet_set_peak_threshold(covdet, peakThreshold) ;
     if (edgeThreshold >= 0) vl_covdet_set_edge_threshold(covdet, edgeThreshold) ;
-
+    if (lapPeakThreshold >= 0) vl_covdet_set_laplacian_peak_threshold(covdet, lapPeakThreshold) ;
+    
     if (verbose) {
       VL_PRINTF("vl_covdet: doubling image: %s\n",
                 VL_YESNO(vl_covdet_get_first_octave(covdet) < 0)) ;
@@ -530,18 +589,17 @@ mexFunction(int nout, mxArray *out[],
 
     /* orientation estimation if needed */
     if (estimateOrientation) {
-      if (verbose) {
-        vl_size numFeaturesBefore = vl_covdet_get_num_features(covdet) ;
-        mexPrintf("vl_covdet: estimating orientations for %d features\n", numFeaturesBefore) ;
-      }
+      vl_size numFeaturesBefore = vl_covdet_get_num_features(covdet) ;
+      vl_size numFeaturesAfter ;
 
       vl_covdet_extract_orientations(covdet) ;
 
-      if (verbose) {
-        vl_size numFeaturesAfter = vl_covdet_get_num_features(covdet) ;
-        mexPrintf("vl_covdet: %d features after estimating orientations\n", numFeaturesAfter) ;
+      numFeaturesAfter = vl_covdet_get_num_features(covdet) ;
+      if (verbose && numFeaturesAfter > numFeaturesBefore) {
+        mexPrintf("vl_covdet: %d duplicate features were crated due to ambiguous "
+                  "orientation detection (%d total)\n",
+                  numFeaturesAfter - numFeaturesBefore, numFeaturesAfter) ;
       }
-
     }
 
     /* store results back */
@@ -659,6 +717,48 @@ mexFunction(int nout, mxArray *out[],
           vl_sift_delete(sift) ;
           break ;
         }
+        case VL_COVDET_DESC_LIOP :
+        {          // TODO: get parameters form input
+          vl_size numFeatures = vl_covdet_get_num_features(covdet) ;
+          vl_size dimension ;
+          VlCovDetFeature const * feature = vl_covdet_get_features(covdet);
+          vl_index i ;
+
+          vl_size patchSide = 2 * patchResolution + 1 ;
+          float * desc ;
+
+          VlLiopDesc * liop = vl_liopdesc_new(liopNumNeighbours, liopNumSpatialBins, liopRadius, (vl_size)patchSide) ;
+          if (!vl_is_nan_f(liopIntensityThreshold)) {
+            vl_liopdesc_set_intensity_threshold(liop, liopIntensityThreshold) ;
+          }
+          dimension = vl_liopdesc_get_dimension(liop) ;
+          if (verbose) {
+            mexPrintf("vl_covdet: descriptors: type=liop, "
+                      "resolution=%d, extent=%g, smoothing=%g\n",
+                      patchResolution, patchRelativeExtent,
+                      patchRelativeSmoothing);
+          }
+          OUT(DESCRIPTORS) = mxCreateNumericMatrix(dimension, numFeatures, mxSINGLE_CLASS, mxREAL);
+          desc = mxGetData(OUT(DESCRIPTORS)) ;
+          vl_tic();
+          for(i = 0; i < (signed)numFeatures; i++){
+              vl_covdet_extract_patch_for_frame(covdet,
+                                                patch,
+                                                patchResolution,
+                                                patchRelativeExtent,
+                                                patchRelativeSmoothing,
+                                                feature[i].frame);
+
+              vl_liopdesc_process(liop, desc, patch);
+
+              desc += dimension;
+
+          }
+          mexPrintf("time: %f\n",vl_toc());
+          mexPrintf("threshold: %f\n",liop->intensityThreshold);
+          break;
+        }
+
         default:
           assert(0) ; /* descriptor type */
       }

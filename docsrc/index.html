@@ -1,5 +1,4 @@
 <!DOCTYPE group PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
 <group>
   <pagestyle>
    #content p.widePar {
@@ -10,6 +9,7 @@
    }
    .award {
      margin: 1em 0em ;
+     margin-left: 2em ;
      width: 10em ;
      font-size: 0.9em ;
      text-align:center ;
@@ -25,7 +25,7 @@
   </pagestyle>
 
   <div class="award">
-    <a href="http://www.acmmm10.org/2010/10/open-source-software-competition-winners/"
+    <a href="http://acmmm10.unifi.it/2010/10/open-source-software-competition-winners/"
     style="text-decoration:none">ACM OpenSource Award 2010</a>
   </div>
 
@@ -40,59 +40,60 @@
   <em>Windows</em>, <em>Mac OS X</em>, and <em>Linux</em>. The latest
   version of VLFeat is <code>%env:VERSION;</code>.</p>
 
- <table class="boxes">
+ <table class="boxes twocols">
  <tr>
- <td style="height:6em;padding-right:0.5em;padding-bottom:0.5em;">
- <div class="box">
-  <h1>Download</h1>
-  <ul>
-   <li><b>
-       <a href="%pathto:root;download/vlfeat-%env:VERSION;-bin.tar.gz"
-          onClick="javascript:pageTracker._trackPageview('/download/vlfeat-%env:VERSION;-bin.tar.gz');">VLFeat
-   %env:VERSION;</a></b> (Windows, Mac, Linux)</li>
-   <li><a href="%pathto:download;">Source code and installation</a></li>
-   <li><a href="http://github.com/vlfeat/vlfeat/tree/master">Git
-   repository</a></li>
-  </ul>
- </div></td>
- <td style="height:6em;padding-left:0.5em;padding-bottom:0.5em;">
- <div class="box">
-  <h1>Documentation</h1>
-  <ul>
-   <li><a href="%pathto:mdoc;">MATLAB commands</a></li>
-   <li><a href="%pathto:api;">C API</a> with algorithm descriptions</li>
-   <li><a href="%pathto:man;">Command line tools</a></li>
-  </ul>
-  </div>
- </td>
+   <td>
+     <h1>Download</h1>
+     <ul>
+       <li><b>
+           <a href="%pathto:root;download/vlfeat-%env:VERSION;-bin.tar.gz"
+              onClick="javascript:pageTracker._trackPageview('/download/vlfeat-%env:VERSION;-bin.tar.gz');">VLFeat
+             %env:VERSION;</a></b> (Windows, Mac, Linux)</li>
+       <li><a href="%pathto:download;">Source code and installation</a></li>
+       <li><img src="%pathto:root;images/git.png" style="height:1em;"></img>
+         <a href="https://github.com/vlfeat/vlfeat">repository,</a>
+         <a href="http://github.com/vlfeat/vlfeat/issues">bug tracking</a>.
+       </li>
+     </ul>
+   </td>
+   <td>
+     <h1>Documentation</h1>
+     <ul>
+       <li><a href="%pathto:matlab;">MATLAB commands</a></li>
+       <li><a href="%pathto:api;">C API</a> with algorithm descriptions</li>
+       <li><a href="%pathto:man;">Command line tools</a></li>
+     </ul>
+   </td>
  </tr>
  <tr>
- <td style="height:15em;padding-right:0.5em;padding-top:0.5em;">
- <div class="box">
-  <h1>Tutorials</h1>
-  <ul>
-  <li>Features: <a href="%pathto:tut.covdet;">Covariant detectors</a>,
-  <a href="%pathto:tut.hog;">HOG</a>, <a
-  href="%pathto:tut.sift;">SIFT</a>, <a
-  href="%pathto:tut.mser;">MSER</a>, <a href="%pathto:tut.qs;">Quick
-  shift</a>, <a href="%pathto:tut.slic;">SLIC</a></li>
-  <li>Clustering: <a href="%pathto:tut.ikm;">IKM</a>, <a href="%pathto:tut.hikm;">HIKM</a>,
-    <a href="%pathto:tut.aib;">AIB</a></li>
-  <li>Matching: <a href="%pathto:tut.kdtree;">Randomized kd-trees</a></li>
-  <li><a href="%pathto:tut;">All tutorials</a></li>
-  </ul>
-  <h1>Example applications</h1>
-  <ul>
-  <li><a href="%pathto:apps.caltech-101;">Caltech-101 classification</a></li>
-  <li><a href="%pathto:apps.sift-mosaic;">SIFT matching for
-  auto-stitching</a></li>
-  <li><a href="%pathto:apps;">All example applications</a></li>
-  </ul>
- </div></td>
- <td style="height:15em;padding-left:0.5em;padding-top:0.5em;">
- <div class="box">
-  <h1>Citing</h1>
-<pre style="font-size: .8em; color: black; margin-top: 0.5em ; margin-bottom: 1.1em; line-height:1.1em;">
+   <td>
+     <h1>Tutorials</h1>
+     <ul>
+       <li>Features:
+         <a href="%pathto:tut.covdet;">Covariant detectors</a>,
+         <a href="%pathto:tut.hog;">HOG</a>,
+         <a href="%pathto:tut.sift;">SIFT</a>,
+         <a href="%pathto:tut.mser;">MSER</a>,
+         <a href="%pathto:tut.qs;">Quick shift</a>,
+         <a href="%pathto:tut.slic;">SLIC</a></li>
+       <li>Clustering:
+         <a href="%pathto:tut.ikm;">IKM</a>,
+         <a href="%pathto:tut.hikm;">HIKM</a>,
+         <a href="%pathto:tut.aib;">AIB</a></li>
+       <li>Matching:
+         <a href="%pathto:tut.kdtree;">Randomized kd-trees</a></li>
+       <li><a href="%pathto:tut;">All tutorials</a></li>
+     </ul>
+     <h1>Example applications</h1>
+     <ul>
+       <li><a href="%pathto:apps.caltech-101;">Caltech-101 classification</a></li>
+       <li><a href="%pathto:apps.sift-mosaic;">SIFT matching for auto-stitching</a></li>
+       <li><a href="%pathto:apps;">All example applications</a></li>
+     </ul>
+   </td>
+   <td>
+     <h1>Citing</h1>
+<pre style="color: black; margin-top: 0.5em ; margin-bottom: 1.1em; line-height:1.1em;">
 @misc{vedaldi08vlfeat,
  Author = {A. Vedaldi and B. Fulkerson},
  Title = {{VLFeat}: An Open and Portable Library
@@ -101,19 +102,51 @@
  Howpublished = {\url{http://www.vlfeat.org/}}
 </pre>
 <h1>Acknowledgments</h1>
-<p><a shape="rect"
-href="http://www.pascal-network.org/"><img src="images/PASCAL2.png"
-style="height:4em;" alt="PASCAL2
-credits"></img></a>, <a href="%pathto:about;">VLFeat Contributors</a>,
-<br clear="none"/><a href="http://vision.ucla.edu">UCLA Vision
-Lab</a>, <a href="http://www.robots.ox.ac.uk/~vgg/">Oxford
-VGG</a>.</p>
-</div></td></tr></table>
+     <p>
+
+       <a shape="rect"
+          href="http://www.pascal-network.org/"><img src="images/PASCAL2.png"
+                                                     style="height:2em;" alt="PASCAL2 credits"></img></a>
+
+       <a shape="rect"
+          href="http://company.yandex.com/">
+         <img src="images/yandex.png" style="height:2em;" alt="Yandex
+                                                               credits"></img></a>
+
+       <a shape="rect"  href="http://vision.ucla.edu">UCLA Vision
+         Lab</a>
+
+       <a shape="rect" href="http://www.robots.ox.ac.uk/~vgg/">Oxford
+         VGG</a>.</p>
+ </td>
+ </tr>
+ </table>
 
  <h2 style="clear:left;">News</h2>
 
  <div class="clear">&nsbp;</div>
  <dl id="changes">
+
+   <dt><span class="date">29/01/2014</span> VLFeat 0.9.18 released</dt>
+   <dd>Several bugfixes. Improved documentation, particularly of the
+   covariant detectors. Minor enhancements of the Fisher vectors.
+   [<a href="http://github.com/vlfeat/vlfeat/commits/v0.9.18">Details</a>]
+   </dd>
+
+   <dt><span class="date">22/06/2013</span> VLFeat 0.9.17 released</dt>
+   <dd>Rewritten SVM implementation, adding support for SGD and SDCA
+   optimizers and various loss functions (hinge, squared hinge,
+   logistic, etc.) and improving the interface. Added infrastructure
+   to support multi-core computations using OpenMP. Added OpenMP
+   support to KD-trees and KMeans. Added new Gaussian Mixture Models,
+   VLAD encoding, and Fisher Vector encodings (also with OpenMP
+   support). Added LIOP feature descriptors. Added new object category
+   recognition example code, supporting several standard benchmarks
+   off-the-shelf. This is the third point update supported by
+   the <a shape="rect" href="roadmap.html"><b>PASCAL Harvest
+   programme</b></a>.
+   [<a href="http://github.com/vlfeat/vlfeat/commits/v0.9.17">Details</a>]
+   </dd>
 
    <dt><span class="date">01/10/2012</span>
      <a href="http://www.vlfeat.org/benchmarks/index.html">VLBenchmarks
@@ -159,6 +192,7 @@ VGG</a>.</p>
      href="http://www.pascal-network.org/?q=node/19">PASCAL
      Harvest</a>! See <a href='%pathto:about;'>here</a> for details.
    </dd>
+   <!--
    <dt><span class="date">24/12/2011</span> VLFeat 0.9.14 released</dt>
    <dd>VLFeat 0.9.14 adds SLIC superpixels, improves the
      documentation, and contains other improvements and
@@ -190,7 +224,6 @@ VGG</a>.</p>
    the <a href="http://www.acmmm10.org/2010/10/open-source-software-competition-winners/">ACM
    Multimedia Open Source Award</a>.
    </dd>
-   <!--
    <dt><span class="date">14/6/2010</span> VLFeat 0.9.9 released</dt>
    <dd>VLFeat 0.9.9 adds a new sample application (SIFT matching) and
      minor refinements.

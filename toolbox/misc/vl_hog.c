@@ -4,12 +4,12 @@
  **/
 
 /*
- Copyright (C) 2007-12 Andrea Vedaldi and Brian Fulkerson.
- All rights reserved.
+Copyright (C) 2007-12 Andrea Vedaldi and Brian Fulkerson.
+All rights reserved.
 
- This file is part of the VLFeat library and is made available under
- the terms of the BSD license (see the COPYING file).
- */
+This file is part of the VLFeat library and is made available under
+the terms of the BSD license (see the COPYING file).
+*/
 
 #include <mexutils.h>
 #include <vl/hog.h>
@@ -48,9 +48,9 @@ mexFunction(int nout, mxArray *out[],
             int nin, const mxArray *in[])
 {
   mxArray const * descriptor_array ;
-  float const * descriptor ;
-  float const * image ;
-  vl_size width, height, numChannels ;
+  float const * descriptor = NULL ;
+  float const * image = NULL ;
+  vl_size width = 0, height = 0, numChannels = 0 ;
   vl_size cellSize = 16 ;
   vl_size numOrientations = 9 ;
   vl_bool bilinearOrientations = VL_FALSE ;
@@ -199,7 +199,7 @@ mexFunction(int nout, mxArray *out[],
   switch (variant) {
     case VlHogVariantUoctti : variantName = "UOCTTI" ; break ;
     case VlHogVariantDalalTriggs : variantName = "DalalTriggs" ; break ;
-    default: assert(0) ; break ;
+    default: abort() ; break ;
   }
 
   switch (mode) {
@@ -230,7 +230,7 @@ mexFunction(int nout, mxArray *out[],
                                height, width, cellSize) ;
           break ;
       default:
-        assert(0) ;
+        abort() ;
       }
 
       dimensions[0] = vl_hog_get_width(hog) ;

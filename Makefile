@@ -10,11 +10,9 @@
 
 # VLFEAT BUILDING INSTRUCTIONS
 #
-# This makefile builds VLFeat on modern UNIX boxes with the GNU
-# toolchain. Mac OS X and Linux are explicitly supported, and support
-# for similar architectures can be easily added.
-#
-# Usually, compiling VLFeat reduces to typing
+# This makefile builds VLFeat on standard Unix installations with the
+# GNU toolchain. Mac OS X and GNU-Linux are explicitly
+# supported. Usually, compiling VLFeat reduces to typing
 #
 # > cd PATH_TO_VLFEAT_SOURCE_TREE
 # > make
@@ -26,40 +24,46 @@
 #
 # > make ARCH=maci64
 #
-# builds VLFeat for Mac OS X Intel 64 bit.
-#
-# !! Unforunately MATLAB mex script (at least up to version 2009B) has
-# !! a bug that prevents selecting an architecture different from the
-# !! default one for compilation. For instance, compiling maci64 may
-# !! not work as the default architecture is maci if both 32 and 64
-# !! bit MATLAB are installed. This bug is easy to fix, but requires
-# !! patching the mex script. See www.vlfeat.org for detailed
-# !! instructions.
+# builds VLFeat for Mac OS X Intel 64 bit. Pease
+# see http://www.vlfeat.org/compiling.html
+# for troubleshooting and details.
 #
 # Other useful variables are listed below (their default value is in
-# square bracked).
+# square brackets).
 #
-#   ARCH [undefined] - Active architecture. The supported
+#   ARCH [not defined] - Active architecture. The supported
 #       architectures are maci, maci64, glnx86, or glnxa64 (these are
-#       the same architecture identifers used by MATLAB:
+#       the same architecture identifiers used by MATLAB:
 #       http://www.mathworks.com/help/techdoc/ref/computer.html). If
 #       undefined, the makefile attempts to automatically detect the
 #       architecture.
 #
-#   DEBUG [undefined] - If defined, turns on debugging symbols and
+#   DEBUG [not defined] - If defined, turns on debugging symbols and
 #       turns off optimizations
 #
-#   PROFILE [undefined] - If defined, turns on debugging symbols but
+#   PROFILE [not defined] - If defined, turns on debugging symbols but
 #       does NOT turn off optimizations.
 #
-#   VERB [undefined] - If defined, display in full the command
+#   VERB [not defined] - If defined, display in full the command
 #       executed and their output.
 #
-#   MEX [mex]- Path to MATLAB MEX compiler. If undefined, MATLAB supprot
+#   MEX [mex]- Path to MATLAB MEX compiler. If undefined, MATLAB support
 #       is disabled.
 #
-#   MKOCTFILE [undefined] - Path to Octave MKOCTFILE compiler. If undefined,
+#   MKOCTFILE [not defined] - Path to Octave MKOCTFILE compiler. If undefined,
 #       Octave support is disabled.
+#
+# If defined to anything other than "no", the following falgs disable
+# specific features in the library. By defaults, all the features are
+# enabled.  If the makefile finds that the environment is unable to
+# support some of them, it may decide to disable them automatically
+# (in this case it will print a message).  This behaviour can be
+# overriden by defining the flag to be "no".
+#
+#   DISABLE_SSE2 - SSE2 vector instructions support.
+#   DISABLE_AVX - AVX vector instructions support.
+#   DISABLE_THREADS - Supprot for multithreded library client.
+#   DISABLE_OPENMP - OpenMP-based multithreaded computations.
 #
 # To completely remove all build products use
 #
@@ -78,16 +82,23 @@
 # components, located in make/*.mak. Please check out the
 # corresponding files in order to adjust parameters.
 
-# AUTORIGHTS
+# Copyright (C) 2014 Andrea Vedaldi.
+# Copyright (C) 2007-13 Andrea Vedaldi and Brian Fulkerson.
+# All rights reserved.
+#
+# This file is part of the VLFeat library and is made available under
+# the terms of the BSD license (see the COPYING file).
 
 SHELL = /bin/bash
 
 .PHONY : all
 all:
 
-# Feature selection
-DISABLE_SSE2=no
-DISABLE_THREADS=no
+# Select which features to disable
+# DISABLE_SSE2=yes
+# DISABLE_AVX=yes
+# DISABLE_THREADS=yes
+# DISABLE_OPENMP=yes
 
 # --------------------------------------------------------------------
 #                                                       Error Messages
@@ -116,7 +127,7 @@ Darwin_i386_ARCH := maci64
 Darwin_x86_64_ARCH := maci64
 Linux_i386_ARCH := glnx86
 Linux_i686_ARCH := glnx86
-Linux_unknown_ARC := glnx86
+Linux_unknown_ARCH := glnx86
 Linux_x86_64_ARCH := glnxa64
 
 UNAME := $(shell uname -sm)
@@ -142,46 +153,96 @@ STD_CLFAGS = $(CFLAGS)
 STD_CFLAGS += -std=c99
 STD_CFLAGS += -Wall -Wextra
 STD_CFLAGS += -Wno-unused-function -Wno-long-long -Wno-variadic-macros
-STD_CFLAGS += $(ifeq ($(DISABLE_THREADS),yes),-DVL_DISABLE_THREADS)
-STD_CFLAGS += $(ifeq ($(DISABLE_SSE2),yes),-DVL_DISABLE_SSE2)
 STD_CFLAGS += $(if $(DEBUG), -DDEBUG -O0 -g, -DNDEBUG -O3)
-STD_CFLAGS += $(if $(PROFILE), -g,)
+STD_CFLAGS += $(if $(PROFILE), -g)
 
 STD_LDFLAGS = $(LDFLAGS)
 
 # Architecture specific ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-# Mac OS X Intel 32
-ifeq ($(ARCH),maci)
-#SDKROOT ?= $(shell xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.7.sdk
-SDKROOT ?= $(shell xcodebuild -version -sdk macosx | sed -n '/^Path\:/p' | sed 's/^Path: //')
+# Detect compiler
+COMPILER_VER_STRING:=$(shell $(CC) --version) $(shell $(CC) -v 2>&1)
+COMPILER:=other
+
+ifneq ($(shell echo "$(COMPILER_VER_STRING)" | grep "gcc"),)
+COMPILER:=gcc
+COMPILER_VER:=$(shell \
+$(CC) -dumpversion | \
+sed -e 's/\.\([0-9][0-9]\)/\1/g' \
+    -e 's/\.\([0-9]\)/0\1/g' \
+    -e 's/^[0-9]\{3,4\}$$/&00/' )
+endif
+
+ifeq "$(findstring clang,$(COMPILER_VER_STRING))" "clang"
+COMPILER:=clang
+COMPILER_VER:=$(shell \
+echo "$(COMPILER_VER_STRING)" | \
+sed -n -e 's/.*version *\([0-9.][0-9.]*\).*/\1/p;' | \
+sed -e 's/\.\([0-9][0-9]\)/\1/g' \
+    -e 's/\.\([0-9]\)/0\1/g' \
+    -e 's/^[0-9]\{3,4\}$$/&00/' )
+endif
+
+$(info Detected compiler: $(COMPILER) $(COMPILER_VER))
+ifeq "$(COMPILER_VER)" "other"
+$(warning Unsupported compiler detected, use at your own risk!)
+endif
+
+ifeq "$(COMPILER)" "gcc"
+ifeq "$(shell expr $(COMPILER_VER) \<= 40600)" "1"
+ifneq "$(DISABLE_AVX)" "no"
+$(info GCC <= 4.6.0 detected, disabling AVX.)
+DISABLE_AVX:=yes
+endif
+endif
+endif
+
+ifeq "$(COMPILER)" "clang"
+ifneq "$(DISABLE_OPENMP)" "no"
+$(info Clang does not support OpenMP yet, disabling.)
+DISABLE_OPENMP:=yes
+endif
+endif
+
+# Mac OS X Intel
+ifeq "$(ARCH)" "$(filter $(ARCH),maci maci64)"
+ifeq "$(ARCH)" "maci"
+march=32
+else
+march=64
+endif
+SDKROOT ?= $(shell xcrun -sdk macosx --show-sdk-path)
 MACOSX_DEPLOYMENT_TARGET ?= 10.4
-STD_CFLAGS += -m32 -isysroot $(SDKROOT) -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
+STD_CFLAGS += -m$(march) -isysroot $(SDKROOT) -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
 STD_LDFLAGS += -Wl,-syslibroot,$(SDKROOT) -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
-CC = gcc
 endif
 
-# Mac OS X Intel 64
-ifeq ($(ARCH),maci64)
-#SDKROOT ?= $(shell xcode-select -print-path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.7.sdk
-SDKROOT ?= $(shell xcodebuild -version -sdk macosx | sed -n '/^Path\:/p' | sed 's/^Path: //')
-MACOSX_DEPLOYMENT_TARGET ?= 10.4
-STD_CFLAGS += -m64 -isysroot $(SDKROOT) -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
-STD_LDFLAGS += -Wl,-syslibroot,$(SDKROOT) -mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET)
-CC = gcc
+# Linux
+ifeq "$(ARCH)" "$(filter $(ARCH),glnx86 glnxa64)"
+ifeq "$(ARCH)" "glnx86"
+march=32
+else
+march=64
+endif
+# Target compatibility with GLIBC 2.3.4
+# 1) _GNU_SOURCE avoids using isoc99_fscanf, limiting binary portability to recent GLIBC.
+# 2) -fno-stack-protector avoids using a feature requiring GLBIC 2.4
+STD_CFLAGS += -m$(march) -D_GNU_SOURCE -fno-stack-protector
+STD_LDFLAGS += -m$(march) -Wl,--rpath,\$$ORIGIN/ -Wl,--as-needed
 endif
 
-# Linux-32
-ifeq ($(ARCH),glnx86)
-STD_CFLAGS += -march=i686
-STD_LDFLAGS += -Wl,--rpath,\$$ORIGIN/ -Wl,--as-needed -lpthread -lm
-CC = gcc
+# Convert back DISALBE_*="no" flags to be empty
+ifeq "$(DISABLE_SSE2)" "no"
+override DISABLE_SSE2:=
 endif
-
-# Linux-64
-ifeq ($(ARCH),glnxa64)
-STD_LDFLAGS += -Wl,--rpath,\$$ORIGIN/ -Wl,--as-needed -lpthread -lm
-CC = gcc
+ifeq "$(DISABLE_AVX)" "no"
+override DISABLE_AVX:=
+endif
+ifeq "$(DISABLE_THREADS)" "no"
+override DISABLE_THREADS:=
+endif
+ifeq "$(DISABLE_OPENMP)" "no"
+override DISABLE_OPENMP:=
 endif
 
 # --------------------------------------------------------------------
@@ -219,37 +280,17 @@ define echo-title
 @printf "** %s\n" "$(1)"
 endef
 
-# $(call print-command, CMD, TGT) prints a message
-define print-command
-@printf "%15s %s\n" "$(strip $(1))" "$(strip $(2))"
-endef
-
 # $(call C, CMD) runs $(CMD) silently
 define C
-@$(call print-command, $(1), "$(@)")
-@quiet ()                                                            \
-{                                                                    \
-    local cmd out err ;					             \
-    cmd="$($(1))";                                                   \
-    out=$$($${cmd} "$${@}" 2>&1) ;                                   \
-    err=$${?} ;                                                      \
-    if test $${err} -gt 0 ; then                                     \
-        echo "******* Offending Command:";                           \
-        printf "%s" "$${cmd}" ;                                      \
-	for i in "$${@}" ; do printf " '%s'" "$$i" ; done ;          \
-	echo ;                                                       \
-        echo "******* Error Code: $${err}";                          \
-	echo "******* Command Output:";                              \
-        echo "$${out}";                                              \
-    fi;                                                              \
-    echo "$${out}" | grep [Ww]arning ;                               \
-    return $${err};                                                  \
-} ; quiet
+@printf "%15s %s\n" "$(1)" "$(@)"
+$(Q)"$($(1))"
 endef
 
 # If verbose print everything
 ifdef VERB
-C = $($(1))
+Q=
+else
+Q=@
 endif
 
 # rule to create a directory
@@ -304,8 +345,14 @@ info:
 	$(call echo-var,VER)
 	$(call echo-var,ARCH)
 	$(call echo-var,CC)
+	$(call echo-var,COMPILER)
+	$(call echo-var,COMPILER_VER)
 	$(call echo-var,STD_CFLAGS)
 	$(call echo-var,STD_LDFLAGS)
+	$(call echo-var,DISABLE_SSE2)
+	$(call echo-var,DISABLE_AVX)
+	$(call echo-var,DISABLE_THREADS)
+	$(call echo-var,DISABLE_OPENMP)
 	@printf "\nThere are %s lines of code.\n" \
 	`cat $(m_src) $(mex_src) $(dll_src) $(dll_hdr) $(bin_src) | wc -l`
 

@@ -1,6 +1,17 @@
 <!DOCTYPE group PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
 <group>
+
+<pagestyle>
+img.photo {
+  float: left ;
+  margin: 0px 13px 0px 0px ;
+  width: 100px ;
+}
+</pagestyle>
+
+%tableofcontents;
+
 <p><b>VLFeat</b> is a cross-platform open source collection of vision
 algorithms with a special focus on visual features (for instance SIFT
 and MSER) and clustering (k-means, hierarchical k-means, agglomerative
@@ -11,13 +22,6 @@ and your own programs.</p>
 
 <p>Many parties make the development of VLFeat possible:</p>
 
-<ul>
-<li><a href='%pathto:about.sponsors;'>Sponsors</a></li>
-<li><a href='%pathto:about.team;'>Team</a></li>
-<li><a href='%pathto:about.advisors;'>Advisors</a></li>
-<li><a href='%pathto:about.others;'>Users and the community</a></li>
-</ul>
-
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 <h2 id="about.sponsors">Sponsors</h2>
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
@@ -27,14 +31,17 @@ alt="PASCAL2 credits"></img> In 2012 the development of VLFeat is
 supported by the PASCAL Harvest programme. Several people have been
 working in Oxford to add new functionalities to the library. Moreover,
 leading researchers in computer vision were consulted as
-<a href="%pathto:about.adisors">advisors</a> of the project.</p>
-
-<p>Some of these advancements are going to be presented at an upcoming
+<a href="%pathto:about.adisors">advisors</a> of the project. Some of
+these advancements have been presented at a
 <a href='https://sites.google.com/site/eccv12features/'>tutorial at
-the European Conference in Computer Vision</a> (ECCV) 2012.</p>
+the European Conference in Computer Vision</a> (ECCV) 2012. See
+the <a href="%pathto:roadmap;">PASCAL Harvest Roadmap</a> for further
+details.</p>
 
-<p>See the <a href="%pathto:roadmap;">PASCAL Harvest Roadmap</a> for
-further details.</p>
+<a shape="rect"
+href="http://company.yandex.com/">
+<img src="images/yandex.png" style="height:4em;" alt="Yandex
+credits"></img></a>
 
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 <h2 id="about.team">Team</h2>
@@ -47,8 +54,7 @@ Vedaldi and Brian Fulkerson in 2007, based on previously published
 software by the same authors.</p>
 
 <p>
- <img style="position:relative;float:right;margin: 0 0 0.5em
-      1em;width:100px;" src="%pathto:root;images/vedaldi.jpg"
+ <img class="photo" src="%pathto:root;images/vedaldi.jpg"
       alt="Andrea Vedaldi picture"/>
 
  <a href="http://www.vlfeat.org/~vedaldi">Andrea Vedaldi</a> joined
@@ -61,49 +67,43 @@ software by the same authors.</p>
  Master's and Ph.D. awards.
 </p>
 
-<p style="clear:right;">
- <img style="position:relative;float:right;margin: 0 0 .5em
-      1em;width:100px;" src="%pathto:root;images/fulkerson.jpg"
+<p class="clearfix">
+ <img class="photo" src="%pathto:root;images/fulkerson.jpg"
       alt="Brian Fulkerson picture"/>
 
- <a href="http://vision.ucla.edu/~brian">Brian Fulkerson</a> received
- his B.S. in Computer Engineering from the University of California -
- San Diego in 2004, and his M.S. and Ph.D.  in Computer Science from
- the University of California - Los Angeles Vision Lab in 2006 and
- 2010.
+ <a href="http://uk.linkedin.com/pub/brian-fulkerson/27/449/244">Brian
+ Fulkerson</a> received his B.S. in Computer Engineering from the
+ University of California - San Diego in 2004, and his M.S. and Ph.D.
+ in Computer Science from the University of California - Los Angeles
+ Vision Lab in 2006 and 2010.
 </p>
 
-<p style="clear:right;">
- <img style="position:relative;float:right;margin: 0 0 .5em
-      1em;width:100px;" src="%pathto:root;images/lenc.jpg"
+<p class="clearfix">
+ <img class="photo" src="%pathto:root;images/lenc.jpg"
       alt="Karel Lenc picture"/>
 
- <a href="http:///~lenc">Karel Lenc</a> Karel Lenc received his
- B.S. degree in Cybernetics and Measurements from the Czech Technical
- University in 2010. He is currently pursuing M.S. degree in Computer
- Vision and Computer Engineering at the CTU, Center for Machine
- Perception. He visited the Department of Engineering Mathematics,
- University of Bristol in 2011 and the Oxford Visual Geometry Group in
- 2012.
-</p>
+ <b>Karel Lenc</b> received his B.S. degree in Cybernetics and
+ Measurements from the Czech Technical University in 2010. He is
+ currently pursuing M.S. degree in Computer Vision and Computer
+ Engineering at the CTU, Center for Machine Perception. He visited the
+ Department of Engineering Mathematics, University of Bristol in 2011
+ and the Oxford Visual Geometry Group in 2012.</p>
 
-<p style="clear:right;">
- <img style="position:relative;float:right;margin: 0 0 .5em
-      1em;width:100px;" src="%pathto:root;images/perrone.jpg"
+<p class="clearfix">
+ <img class="photo" src="%pathto:root;images/perrone.jpg"
       alt="Daniele Perrone picture"/>
 
- <a href="http://www.cvg.unibe.ch/daniele%20perrone.html">Daniele Perrone</a>
- received his  B.S. degree in Computer Engineering from Universit&agrave;
- della Calabria in 2007, and his M.S. degree in Artificial
- Intelligence from "Sapienza" Universit&agrave; di Roma in 2009. He started
- his Ph.D. in June 2010 at  Heriot-Watt University, Edinburgh,
- UK. From June 2012 he joined the Computer Vision Group at the Universit&auml;t Bern,
- Switzerland.
+ <a href="http://www.cvg.unibe.ch/daniele%20perrone.html">Daniele
+ Perrone</a> received his B.S. degree in Computer Engineering from
+ Universit&agrave; della Calabria in 2007, and his M.S. degree in
+ Artificial Intelligence from "Sapienza" Universit&agrave; di Roma in
+ 2009. He started his Ph.D. in June 2010 at Heriot-Watt University,
+ Edinburgh, UK. From June 2012 he joined the Computer Vision Group at
+ the Universit&auml;t Bern, Switzerland.
 </p>
 
-<p style="clear:right;">
- <img style="position:relative;float:right;margin: 0 0 .5em
-      1em;width:100px;" src="%pathto:root;images/perdoch.jpg"
+<p class="clearfix">
+ <img class="photo" src="%pathto:root;images/perdoch.jpg"
       alt="Michal Perdoch picture"/>
 
  <a href="http://cmp.felk.cvut.cz/~perdom1/">Michal Perdoch</a>
@@ -115,7 +115,28 @@ software by the same authors.</p>
  researcher at the CTU Center for Machine Perception.
 </p>
 
-<br class="clear"/>
+<p class="clearfix">
+ <img class="photo" src="%pathto:root;images/sulc.jpg"
+      alt="Milan Sulc picture"/>
+
+ <a href="http://cmp.felk.cvut.cz/~sulcmila/">Milan Sulc</a>
+ received his Bachelor's degree in Cybernetics and Robotics from the
+ Czech Technical University in 2012.
+ He is currently pursuing Master degrees in Computer Vision
+ and Artificial Intelligence at the CTU
+ and Entrepreneurship and Commercial Engineering in Industry at CTU.
+ He is a student intern at the CTU Center for Machine Perception.
+</p>
+
+<p class="clearfix">
+ <img class="photo" src="%pathto:root;images/sarbortova.jpg"
+      alt="Hana Sarbortova picture"/>
+
+ <a href="http://cz.linkedin.com/pub/hana-%C5%A1arbortov%C3%A1/65/a15/446">Hana Sarbortova</a>
+received her Bachelor of Engineering degree in Digital Signal and Image Processing from the
+University of Central Lancashire in 2012. She is currently studying Computer Vision and Digital Image
+at the Czech Technical University in Prague. She is a student intern at the CTU Center for Machine Perception.
+</p>
 
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 <h2 id="about.advisors">Advisors</h2>
@@ -135,8 +156,6 @@ Lab</a>.</li>
 <li>Prof. Stefano Soatto, <a href="http://vision.ucla.edu">UCLA Vision
 Lab</a>.</li>
 </ul>
-
-<br class="clear"/>
 
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
 <h2 id="about.others">Users and community</h2>

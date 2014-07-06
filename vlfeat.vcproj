@@ -25,9 +25,9 @@
 			>
 			<Tool
 				Name="VCNMakeTool"
-				BuildCommandLine="nmake /f Makefile.mak"
-				ReBuildCommandLine="nmake /f Makefile.mak clean all"
-				CleanCommandLine="nmake /f Makefile.mak clean"
+				BuildCommandLine="set VCInstallDir=$(VCInstallDir)&#x0D;&#x0A;set WindowsSdkDir=$(WindowsSdkDir)&#x0D;&#x0A;nmake /f Makefile.mak DEBUG=yes&#x0D;&#x0A;"
+				ReBuildCommandLine="set VCInstallDir=$(VCInstallDir)&#x0D;&#x0A;set WindowsSdkDir=$(WindowsSdkDir)&#x0D;&#x0A;nmake /f Makefile.mak distclean all DEBUG=yesl"
+				CleanCommandLine="set VCInstallDir=$(VCInstallDir)&#x0D;&#x0A;set WindowsSdkDir=$(WindowsSdkDir)&#x0D;&#x0A;nmake /f Makefile.mak  clean"
 				Output=""
 				PreprocessorDefinitions="WIN32;_DEBUG"
 				IncludeSearchPath=""
@@ -189,6 +189,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\vl\gmm.c"
+				>
+			</File>
+			<File
+				RelativePath=".\vl\gmm.h"
+				>
+			</File>
+			<File
 				RelativePath=".\vl\heap-def.h"
 				>
 			</File>
@@ -285,11 +293,27 @@
 				>
 			</File>
 			<File
+				RelativePath=".\vl\liop.c"
+				>
+			</File>
+			<File
+				RelativePath=".\vl\liop.h"
+				>
+			</File>
+			<File
 				RelativePath=".\vl\mathop.c"
 				>
 			</File>
 			<File
 				RelativePath=".\vl\mathop.h"
+				>
+			</File>
+			<File
+				RelativePath=".\vl\mathop_avx.c"
+				>
+			</File>
+			<File
+				RelativePath=".\vl\mathop_avx.h"
 				>
 			</File>
 			<File
@@ -446,6 +470,10 @@
 			</File>
 			<File
 				RelativePath=".\toolbox\misc\vl_getpid.c"
+				>
+			</File>
+			<File
+				RelativePath=".\toolbox\gmm\vl_gmm.c"
 				>
 			</File>
 			<File
@@ -627,10 +655,6 @@
 		</Filter>
 		<File
 			RelativePath=".\Makefile.mak"
-			>
-		</File>
-		<File
-			RelativePath=".\readme.txt"
 			>
 		</File>
 	</Files>

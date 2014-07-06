@@ -2,6 +2,7 @@
 # description: Build VLFeat DLL
 # author: Andrea Vedaldi
 
+# Copyright (C) 2013-14 Andrea Vedaldi.
 # Copyright (C) 2007-12 Andrea Vedaldi and Brian Fulkerson.
 # All rights reserved.
 #
@@ -18,34 +19,61 @@ info: dll-info
 #                                                        Configuration
 # --------------------------------------------------------------------
 
+# LINK_DLL_CLFAGS and LINK_DLL_LDFLAGS are the compiler options needed
+# to link to the VLFeat DLL. DLL_CLFAGS and DLL_LDFLAGS the options to
+# build the DLL.
+
 DLL_NAME = vl
 
-DLL_CFLAGS  = $(STD_CFLAGS)
-DLL_CFLAGS += -fvisibility=hidden -fPIC -DVL_BUILD_DLL -pthread
-DLL_CFLAGS += $(call if-like,%_sse2,$*,-msse2)
+LINK_DLL_CFLAGS = \
+$(if $(DISABLE_THREADS),-DVL_DISABLE_THREADS) \
+$(if $(DISABLE_OPENMP),-DVL_DISABLE_OPENMP) \
+$(if $(DISABLE_SSE2),-DVL_DISABLE_SSE2) \
+$(if $(DISABLE_AVX),-DVL_DISABLE_AVX) \
+-I$(VLDIR)
 
-DLL_LDFLAGS += -lm
+LINK_DLL_LDFLAGS =\
+-L$(BINDIR) -lvl
+
+DLL_CFLAGS = \
+$(STD_CFLAGS) \
+-fvisibility=hidden -fPIC -DVL_BUILD_DLL \
+$(LINK_DLL_CFLAGS) \
+$(call if-like,%_sse2,$*, $(if $(DISABLE_SSE2),,-msse2)) \
+$(call if-like,%_avx,$*, $(if $(DISABLE_AVX),,-mavx)) \
+$(if $(DISABLE_THREADS),,-pthread) \
+$(if $(DISABLE_OPENMP),,-fopenmp)
+
+DLL_LDFLAGS = \
+$(STD_LDFLAGS) \
+-lm \
+$(if $(DISABLE_THREADS),,-lpthread) \
+$(if $(DISABLE_OPENMP),,-fopenmp)
 
 BINDIR = bin/$(ARCH)
 
 # Mac OS X on Intel 32 bit processor
 ifeq ($(ARCH),maci)
 DLL_SUFFIX := dylib
+DLL_LDFLAGS += -m32
 endif
 
 # Mac OS X on Intel 64 bit processor
 ifeq ($(ARCH),maci64)
 DLL_SUFFIX := dylib
+DLL_LDFLAGS += -m64
 endif
 
 # Linux-32
 ifeq ($(ARCH),glnx86)
 DLL_SUFFIX := so
+DLL_LDFLAGS += -m32
 endif
 
 # Linux-64
 ifeq ($(ARCH),glnxa64)
 DLL_SUFFIX := so
+DLL_LDFLAGS += -m64
 endif
 
 # --------------------------------------------------------------------
@@ -80,28 +108,35 @@ dll: $(dll_tgt)
 $(eval $(call gendir, dll, $(BINDIR) $(BINDIR)/objs))
 
 $(BINDIR)/objs/%.o : $(VLDIR)/vl/%.c $(dll-dir)
-	$(call C,CC) $(DLL_CFLAGS)                                   \
-	       -c "$(<)" -o "$(@)"
+	$(call C,CC)                                            \
+	     -c -o "$(@)"                                       \
+	     $(DLL_CFLAGS) "$(<)"
 
 $(BINDIR)/objs/%.d : $(VLDIR)/vl/%.c $(dll-dir)
-	$(call C,CC) $(DLL_CFLAGS)                                   \
-	       -M -MT '$(BINDIR)/objs/$*.o $(BINDIR)/objs/$*.d'      \
-	       "$(<)" -MF "$(@)"
+	$(call C,CC)						\
+	     -MM						\
+	     -MF "$(@)"						\
+	     -MT '$(BINDIR)/objs/$*.o $(BINDIR)/objs/$*.d'      \
+	     $(DLL_CFLAGS) "$(<)"
 
 $(BINDIR)/lib$(DLL_NAME).dylib : $(dll_obj)
-	$(call C,LIBTOOL) -dynamic                                   \
-                    -flat_namespace                                  \
-                    -install_name @loader_path/lib$(DLL_NAME).dylib  \
-	            -compatibility_version $(VER)                    \
-                    -current_version $(VER)                          \
-                    -syslibroot $(SDKROOT)                           \
-		    -macosx_version_min $(MACOSX_DEPLOYMENT_TARGET)  \
-	            -o $@ -undefined suppress $^                     \
-	            $(DLL_LDFLAGS)
-
+	$(call C,CC)						\
+	  -dynamiclib						\
+	  -undefined suppress					\
+	  -flat_namespace					\
+	  -install_name @loader_path/lib$(DLL_NAME).dylib	\
+	  -compatibility_version $(VER)				\
+	  -current_version $(VER)				\
+	  -isysroot $(SDKROOT)					\
+	  $(DLL_LDFLAGS)					\
+	  $(^)							\
+	  -o "$(@)"
 
 $(BINDIR)/lib$(DLL_NAME).so : $(dll_obj)
-	$(call C,CC) $(DLL_CFLAGS) -shared $(^) -o $(@) $(DLL_LDFLAGS)
+	$(call C,CC) -shared                                    \
+	    $(^)                                                \
+	    $(DLL_LDFLAGS)	                                \
+	    -o "$(@)"
 
 dll-clean:
 	rm -f $(dll_dep) $(dll_obj)
@@ -120,6 +155,8 @@ dll-info:
 	$(call dump-var,dll_dep)
 	$(call echo-var,BINDIR)
 	$(call echo-var,DLL_NAME)
+	$(call echo-var,LINK_DLL_CFLAGS)
+	$(call echo-var,LINK_DLL_LDFLAGS)
 	$(call echo-var,DLL_CFLAGS)
 	$(call echo-var,DLL_LDFLAGS)
 	$(call echo-var,DLL_SUFFIX)

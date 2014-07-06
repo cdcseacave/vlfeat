@@ -17,6 +17,7 @@ function results = vl_test(suite, test)
 
 % Author: Andrea Vedaldi
 
+% Copyright (C) 2013-14 Andrea Vedaldi.
 % Copyright (C) 2007-12 Andrea Vedaldi and Brian Fulkerson.
 % All rights reserved.
 %
@@ -28,7 +29,7 @@ clear functions ;
 testRoot = fileparts(mfilename('fullpath')) ;
 
 if nargin == 0
-  files = dir(fullfile(testRoot, 'vl_test_*m')) ;
+  files = dir(fullfile(testRoot, 'vl_test_*.m')) ;
 elseif nargin == 1
   files.name = fullfile(['vl_test_' suite '.m']) ;
 end
@@ -55,6 +56,8 @@ if nargin < 2
     end
   end
 
+  fprintf('vl_test: %d tested, %d succeded, %d failed\n', ...
+          numel(results), sum([results.succeded]), sum(~[results.succeded])) ;
 else
   feval(str2func(sprintf('vl_test_%s', suite)), test) ;
 end

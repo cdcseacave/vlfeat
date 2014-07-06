@@ -14,6 +14,7 @@ the terms of the BSD license (see the COPYING file).
 #include <vl/kmeans.h>
 #include <mexutils.h>
 #include <string.h>
+#include <stdio.h>
 
 enum {
   opt_max_num_iterations,
@@ -21,7 +22,11 @@ enum {
   opt_distance,
   opt_initialization,
   opt_num_repetitions,
-  opt_verbose
+  opt_verbose,
+  opt_num_comparisons,
+  opt_min_energy_variation,
+  opt_num_trees,
+  opt_multithreading
 } ;
 
 enum {
@@ -37,6 +42,9 @@ vlmxOption  options [] = {
   {"NumRepetitions",    1,   opt_num_repetitions,    },
   {"Initialization",    1,   opt_initialization      },
   {"Initialisation",    1,   opt_initialization      }, /* UK spelling */
+  {"NumTrees",          1,   opt_num_trees           },
+  {"MaxNumComparisons", 1,   opt_num_comparisons     },
+  {"MinEnergyVariation",1,   opt_min_energy_variation},
   {0,                   0,   0                       }
 } ;
 
@@ -44,6 +52,7 @@ vlmxOption  options [] = {
 void
 mexFunction (int nout, mxArray * out[], int nin, const mxArray * in[])
 {
+
   enum {IN_DATA = 0, IN_NUMCENTERS, IN_END} ;
   enum {OUT_CENTERS = 0, OUT_ASSIGNMENTS, OUT_ENERGY} ;
 
@@ -61,9 +70,12 @@ mexFunction (int nout, mxArray * out[], int nin, const mxArray * in[])
   VlVectorComparisonType distance = VlDistanceL2 ;
   vl_size maxNumIterations = 100 ;
   vl_size numRepetitions = 1 ;
+  double minEnergyVariation = -1 ;
   double energy ;
   int verbosity = 0 ;
   int initialization = INIT_PLUSPLUS ;
+  vl_size maxNumComparisons = 100 ;
+  vl_size numTrees = 3;
 
   vl_type dataType ;
   mxClassID classID ;
@@ -110,10 +122,6 @@ mexFunction (int nout, mxArray * out[], int nin, const mxArray * in[])
               "than the number of data.") ;
   }
 
-  if (dimension == 0) {
-    vlmxError (vlmxErrInvalidArgument, "SIZE(DATA,1) is zero") ;
-  }
-
   while ((opt = vlmxNextOption (in, nin, options, &next, &optarg)) >= 0) {
     char buf [1024] ;
 
@@ -129,6 +137,14 @@ mexFunction (int nout, mxArray * out[], int nin, const mxArray * in[])
                     "MAXNUMITERATIONS must be a non-negative integer scalar") ;
         }
         maxNumIterations = (vl_size) mxGetScalar(optarg) ;
+        break ;
+        
+      case opt_min_energy_variation :
+        if (!vlmxIsPlainScalar(optarg) || mxGetScalar(optarg) < 0) {
+          vlmxError (vlmxErrInvalidArgument,
+                     "MINENERGYVARIATION must be a non-negative scalar") ;
+        }
+        minEnergyVariation = mxGetScalar(optarg) ;
         break ;
 
       case opt_algorithm :
@@ -205,6 +221,31 @@ mexFunction (int nout, mxArray * out[], int nin, const mxArray * in[])
         numRepetitions = (vl_size) mxGetScalar (optarg) ;
         break ;
 
+       case opt_num_trees :
+            if (!vlmxIsPlainScalar (optarg)) {
+              vlmxError (vlmxErrInvalidArgument,
+                     "NUMTREES must be a scalar.") ;
+            }
+            if (mxGetScalar (optarg) < 1) {
+              vlmxError (vlmxErrInvalidArgument,
+                    "NUMTREES must be larger than or equal to 1.") ;
+            }
+            numTrees = (vl_size) mxGetScalar (optarg) ;
+         break;
+
+
+       case opt_num_comparisons :
+            if (!vlmxIsPlainScalar (optarg)) {
+              vlmxError (vlmxErrInvalidArgument,
+                     "NUMCOMPARISONS must be a scalar.") ;
+            }
+            if (mxGetScalar (optarg) < 0) {
+              vlmxError (vlmxErrInvalidArgument,
+                    "NUMCOMPARISONS must be larger than or equal to 0.") ;
+            }
+            maxNumComparisons = (vl_size) mxGetScalar (optarg) ;
+         break;
+
       default :
         abort() ;
         break ;
@@ -224,6 +265,13 @@ mexFunction (int nout, mxArray * out[], int nin, const mxArray * in[])
   vl_kmeans_set_algorithm (kmeans, algorithm) ;
   vl_kmeans_set_initialization (kmeans, initialization) ;
   vl_kmeans_set_max_num_iterations (kmeans, maxNumIterations) ;
+  vl_kmeans_set_max_num_comparisons (kmeans, maxNumComparisons) ;
+  vl_kmeans_set_num_trees (kmeans, numTrees);
+  
+  if (minEnergyVariation >= 0) {
+    mexPrintf("%f\n\n\n",minEnergyVariation);
+    vl_kmeans_set_min_energy_variation (kmeans, minEnergyVariation) ;
+  }
 
   if (verbosity) {
     char const * algorithmName = 0 ;
@@ -243,12 +291,15 @@ mexFunction (int nout, mxArray * out[], int nin, const mxArray * in[])
     mexPrintf("kmeans: Initialization = %s\n", initializationName) ;
     mexPrintf("kmeans: Algorithm = %s\n", algorithmName) ;
     mexPrintf("kmeans: MaxNumIterations = %d\n", vl_kmeans_get_max_num_iterations(kmeans)) ;
+    mexPrintf("kmeans: MinEnergyVariation = %f\n", vl_kmeans_get_min_energy_variation(kmeans)) ;
     mexPrintf("kmeans: NumRepetitions = %d\n", vl_kmeans_get_num_repetitions(kmeans)) ;
     mexPrintf("kmeans: data type = %s\n", vl_get_type_name(vl_kmeans_get_data_type(kmeans))) ;
     mexPrintf("kmeans: distance = %s\n", vl_get_vector_comparison_type_name(vl_kmeans_get_distance(kmeans))) ;
     mexPrintf("kmeans: data dimension = %d\n", dimension) ;
     mexPrintf("kmeans: num. data points = %d\n", numData) ;
     mexPrintf("kmeans: num. centers = %d\n", numCenters) ;
+    mexPrintf("kmeans: max num. comparisons = %d\n", maxNumComparisons) ;
+    mexPrintf("kmeans: num. trees = %d\n", numTrees) ;
     mexPrintf("\n") ;
   }
 

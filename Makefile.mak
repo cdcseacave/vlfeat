@@ -24,22 +24,24 @@
 # Note that some of these variables depend on the architecture
 # (either win32 or win64).
 
-VER = 0.9.16
+VER = 0.9.18
 ARCH = win64
 DEBUG = no
 BRANCH = v$(VER)-$(ARCH)
-MSVSVER = 90
-MSVCROOT = $(VCInstallDir)
-WINSDKROOT = $(WindowsSdkDir)
+MSVSVER =
+MSVCROOT = $(VCINSTALLDIR)
+WINSDKROOT = $(WINDOWSSDKDIR)
 GIT = git
 
 !if "$(MSVCROOT)" == ""
-MSVCROOT = C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC
+MSVCROOT = C:\Program Files\Microsoft Visual Studio 10.0\VC
 !endif
 
 !if "$(WINSDKROOT)" == ""
-WINSDKROOT = C:\Program Files\Microsoft SDKs\Windows\v6.0A
+WINSDKROOT = C:\Program Files\Microsoft SDKs\Windows\v7.0A
 !endif
+
+!include make/nmake_helper.mak
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 32-bit
 !if "$(ARCH)" == "win32"
@@ -137,8 +139,9 @@ objdir = $(bindir)\objs
 CFLAGS = /nologo /TC /MD \
          /D"_CRT_SECURE_NO_DEPRECATE" \
          /D"__LITTLE_ENDIAN__" \
+         /D"VL_DISABLE_AVX" \
          /I. \
-         /W1 /Zp8 /Ox
+         /W1 /Zp8 /openmp
 
 LFLAGS = $(LFLAGS) /NOLOGO \
          /INCREMENTAL:NO \
@@ -148,9 +151,10 @@ LFLAGS = $(LFLAGS) /NOLOGO \
 !message === DEBUGGING ON
 CFLAGS = $(CFLAGS) /Z7 /D"DEBUG"
 LFLAGS = $(LFLAGS) /DEBUG
+MEX_FLAGS = $(MEX_FLAGS) -g
 !else
 !message === DEBUGGING OFF
-CFLAGS = $(CFLAGS) /D"NDEBUG"
+CFLAGS = $(CFLAGS) /D"NDEBUG" /Ox
 !endif
 
 DLL_CFLAGS = /D"VL_BUILD_DLL"
@@ -162,8 +166,10 @@ libsrc = \
   vl\array.c \
   vl\covdet.c \
   vl\dsift.c \
+  vl\fisher.c \
   vl\generic.c \
   vl\getopt_long.c \
+  vl\gmm.c \
   vl\hikmeans.c \
   vl\hog.c \
   vl\homkermap.c \
@@ -174,10 +180,11 @@ libsrc = \
   vl\kdtree.c \
   vl\kmeans.c \
   vl\lbp.c \
+  vl\liop.c \
   vl\mathop.c \
+  vl\mathop_avx.c \
   vl\mathop_sse2.c \
   vl\mser.c \
-  vl\pegasos.c \
   vl\pgm.c \
   vl\quickshift.c \
   vl\random.c \
@@ -186,7 +193,9 @@ libsrc = \
   vl\sift.c \
   vl\slic.c \
   vl\stringop.c \
-  vl\svmdataset.c
+  vl\svm.c \
+  vl\svmdataset.c \
+  vl\vlad.c
 
 cmdsrc = \
   src\aib.c \
@@ -194,14 +203,41 @@ cmdsrc = \
   src\sift.c \
   src\test_gauss_elimination.c \
   src\test_getopt_long.c \
+  src\test_gmm.c \
   src\test_heap-def.c \
   src\test_host.c \
   src\test_imopv.c \
+  src\test_kmeans.c \
+  src\test_liop.c \
   src\test_mathop.c \
   src\test_mathop_abs.c \
   src\test_nan.c \
   src\test_qsort-def.c \
   src\test_rand.c \
+  src\test_sqrti.c \
+  src\test_stringop.c \
+  src\test_svd2.c \
+  src\test_threads.c \
+  src\test_vec_comp.c
+
+cmdsrc = \
+  src\aib.c \
+  src\mser.c \
+  src\sift.c \
+  src\test_gauss_elimination.c \
+  src\test_getopt_long.c \
+  src\test_gmm.c \
+  src\test_heap-def.c \
+  src\test_host.c \
+  src\test_imopv.c \
+  src\test_kmeans.c \
+  src\test_liop.c \
+  src\test_mathop.c \
+  src\test_mathop_abs.c \
+  src\test_nan.c \
+  src\test_qsort-def.c \
+  src\test_rand.c \
+  src\test_sqrti.c \
   src\test_stringop.c \
   src\test_svd2.c \
   src\test_threads.c \
@@ -210,8 +246,10 @@ cmdsrc = \
 mexsrc = \
   toolbox\aib\vl_aib.c \
   toolbox\aib\vl_aibhist.c \
+  toolbox\fisher\vl_fisher.c \
   toolbox\geometry\vl_irodr.c \
   toolbox\geometry\vl_rodr.c \
+  toolbox\gmm\vl_gmm.c \
   toolbox\imop\vl_imdisttf.c \
   toolbox\imop\vl_imintegral.c \
   toolbox\imop\vl_imsmooth.c \
@@ -237,11 +275,10 @@ mexsrc = \
   toolbox\misc\vl_kdtreequery.c \
   toolbox\misc\vl_lbp.c \
   toolbox\misc\vl_localmax.c \
-  toolbox\misc\vl_maketrainingset.c \
-  toolbox\misc\vl_pegasos.c \
   toolbox\misc\vl_sampleinthist.c \
   toolbox\misc\vl_simdctrl.c \
-  toolbox\misc\vl_svmpegasos.c \
+  toolbox\misc\vl_svmtrain.c \
+  toolbox\misc\vl_threads.c \
   toolbox\misc\vl_twister.c \
   toolbox\misc\vl_version.c \
   toolbox\mser\vl_erfill.c \
@@ -249,39 +286,47 @@ mexsrc = \
   toolbox\quickshift\vl_quickshift.c \
   toolbox\sift\vl_covdet.c \
   toolbox\sift\vl_dsift.c \
+  toolbox\sift\vl_liop.c \
   toolbox\sift\vl_sift.c \
   toolbox\sift\vl_siftdescriptor.c \
   toolbox\sift\vl_ubcmatch.c \
-  toolbox\slic\vl_slic.c
+  toolbox\slic\vl_slic.c \
+  toolbox\vlad\vl_vlad.c
 
 !if "$(ARCH)" == "win32"
 libobj = $(libsrc:vl\=bin\win32\objs\)
 cmdexe = $(cmdsrc:src\=bin\win32\)
 mexdll = $(mexsrc:.c=.mexw32)
+mexdll = $(mexdll:toolbox\fisher=toolbox\mex\mexw32)
 mexdll = $(mexdll:toolbox\sift=toolbox\mex\mexw32)
 mexdll = $(mexdll:toolbox\mser=toolbox\mex\mexw32)
 mexdll = $(mexdll:toolbox\imop=toolbox\mex\mexw32)
 mexdll = $(mexdll:toolbox\geometry=toolbox\mex\mexw32)
+mexdll = $(mexdll:toolbox\gmm=toolbox\mex\mexw32)
 mexdll = $(mexdll:toolbox\kmeans=toolbox\mex\mexw32)
 mexdll = $(mexdll:toolbox\misc=toolbox\mex\mexw32)
 mexdll = $(mexdll:toolbox\aib=toolbox\mex\mexw32)
 mexdll = $(mexdll:toolbox\quickshift=toolbox\mex\mexw32)
 mexdll = $(mexdll:toolbox\slic=toolbox\mex\mexw32)
+mexdll = $(mexdll:toolbox\vlad=toolbox\mex\mexw32)
 mexpdb = $(mexdll:.dll=.pdb)
 
 !elseif "$(ARCH)" == "win64"
 libobj = $(libsrc:vl\=bin\win64\objs\)
 cmdexe = $(cmdsrc:src\=bin\win64\)
 mexdll = $(mexsrc:.c=.mexw64)
+mexdll = $(mexdll:toolbox\fisher=toolbox\mex\mexw64)
 mexdll = $(mexdll:toolbox\sift=toolbox\mex\mexw64)
 mexdll = $(mexdll:toolbox\mser=toolbox\mex\mexw64)
 mexdll = $(mexdll:toolbox\imop=toolbox\mex\mexw64)
 mexdll = $(mexdll:toolbox\geometry=toolbox\mex\mexw64)
+mexdll = $(mexdll:toolbox\gmm=toolbox\mex\mexw64)
 mexdll = $(mexdll:toolbox\kmeans=toolbox\mex\mexw64)
 mexdll = $(mexdll:toolbox\misc=toolbox\mex\mexw64)
 mexdll = $(mexdll:toolbox\aib=toolbox\mex\mexw64)
 mexdll = $(mexdll:toolbox\quickshift=toolbox\mex\mexw64)
 mexdll = $(mexdll:toolbox\slic=toolbox\mex\mexw64)
+mexdll = $(mexdll:toolbox\vlad=toolbox\mex\mexw64)
 mexpdb = $(mexdll:.mexw64=.pdb)
 !endif
 
@@ -441,6 +486,9 @@ startmatlab:
 {toolbox\imop}.c{$(mexdir)}.$(MEXEXT):
 	$(BUILD_MEX)
 
+{toolbox\gmm}.c{$(mexdir)}.$(MEXEXT):
+	$(BUILD_MEX)
+
 {toolbox\geometry}.c{$(mexdir)}.$(MEXEXT):
 	$(BUILD_MEX)
 
@@ -459,9 +507,27 @@ startmatlab:
 {toolbox\slic}.c{$(mexdir)}.$(MEXEXT):
 	$(BUILD_MEX)
 
+{toolbox\vlad}.c{$(mexdir)}.$(MEXEXT):
+	$(BUILD_MEX)
+
+{toolbox\fisher}.c{$(mexdir)}.$(MEXEXT):
+	$(BUILD_MEX)
+
 # vl.dll => mexw{32,64}\vl.dll
 $(mexdir)\vl.dll : $(bindir)\vl.dll
 	copy "$(**)" "$(@)"
+
+# Ideally, the DLL should be linked to Intel compatibility library libiomp5md.dll that
+# ships with MATLAB. However, there does not seem to be a clean way to do so without
+# the .lib file. This is suboptimal as it casues two OMP libraries to be used (vcomp and iomp5).
+# Possible work arounds that did not work yet: generate the .lib file from the .dll file,
+# redirect somehow vcomp to iomp5.
+
+#$(LINK) /LIBPATH:"$(MATLABROOT)\extern\lib\win64\microsoft" /DLL $(LFLAGS) $(**) libmwblas.lib /nodefaultlib:vcomp /OUT:"$(@)"
+#$(mexdir)\vl.dll : $(libobj)
+#	@echo .. LINK [DLL] $(@R).dll
+#  $(LINK) /DLL $(LFLAGS) $(**) /OUT:"$(@)"
+#	@-del "$(@R).dll.manifest"
 
 # redistributable: msvcr__.dll => bin/win{32,64}/msvcr__.dll
 $(mexdir)\$(MSVCR).manifest : "$(MSVCR_PATH)\$(MSVCR).manifest"

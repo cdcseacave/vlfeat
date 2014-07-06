@@ -15,7 +15,7 @@
 %   Options:
 %
 %   Variant:: 'UoCTTI'
-%     Choose a HOG variant: 'UoCTTI' or 'Dalal-Triggs'.
+%     Choose a HOG variant: 'UoCTTI' or 'DalalTriggs'.
 %
 %   NumOrientations:: 9
 %     Choose a number of undirected orientations in the orientation
@@ -37,7 +37,14 @@
 %
 %   Example:: computing and visualizing HOG features
 %     hog = vl_hog(im2single(im)) ; % compute HOG features
+%
+%   See also: <a href="matlab:vl_help('hog')">HOG fundamentals</a>,
+%   VL_HELP().
 
 % Author: Andrea Vedaldi
 
-% AUTORIGHTS
+% Copyright (C) 2012-13 Andrea Vedaldi.
+% All rights reserved.
+%
+% This file is part of the VLFeat library and is made available under
+% the terms of the BSD license (see the COPYING file).

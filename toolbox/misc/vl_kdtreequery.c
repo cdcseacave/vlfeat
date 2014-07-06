@@ -22,16 +22,16 @@ the terms of the BSD license (see the COPYING file).
 
 /* option codes */
 enum {
-  opt_verbose, opt_num_neighs, opt_max_num_comparisons
+  opt_verbose, opt_num_neighs, opt_max_num_comparisons, opt_multithreading
 } ;
 
 /* options */
 vlmxOption  options [] = {
-{"Verbose",           0,   opt_verbose             },
-{"NumNeighbors",      1,   opt_num_neighs          },
-{"MaxComparisons",    1,   opt_max_num_comparisons },
-{"MaxNumComparisons", 1,   opt_max_num_comparisons },
-{0,                   0,   0                       }
+  {"Verbose",           0,   opt_verbose             },
+  {"NumNeighbors",      1,   opt_num_neighs          },
+  {"MaxComparisons",    1,   opt_max_num_comparisons },
+  {"MaxNumComparisons", 1,   opt_max_num_comparisons },
+  {0,                   0,   0                       }
 } ;
 
 /** ------------------------------------------------------------------
@@ -45,27 +45,24 @@ mexFunction(int nout, mxArray *out[],
   enum {IN_FOREST = 0, IN_DATA, IN_QUERY, IN_END} ;
   enum {OUT_INDEX = 0, OUT_DISTANCE} ;
 
-  int            verbose = 0 ;
-  int            opt ;
-  int            next = IN_END ;
+  int verbose = 0 ;
+  int opt ;
+  int next = IN_END ;
   mxArray const *optarg ;
 
   VlKDForest * forest ;
   mxArray const * forest_array = in[IN_FOREST] ;
   mxArray const * data_array = in[IN_DATA] ;
   mxArray const * query_array = in[IN_QUERY] ;
-  mxArray * index_array ;
-  mxArray * distance_array ;
   void * query ;
   vl_uint32 * index ;
   void * distance ;
   vl_size numNeighbors = 1 ;
   vl_size numQueries ;
-  vl_uindex qi, ni;
   unsigned int numComparisons = 0 ;
   unsigned int maxNumComparisons = 0 ;
-  VlKDForestNeighbor * neighbors ;
   mxClassID dataClass ;
+  vl_index i ;
 
   VL_USE_MATLAB_ENV ;
 
@@ -85,15 +82,15 @@ mexFunction(int nout, mxArray *out[],
   dataClass = mxGetClassID (data_array) ;
   if (mxGetClassID (query_array) != dataClass) {
     vlmxError(vlmxErrInvalidArgument,
-             "QUERY must have the same storage class as DATA.") ;
+              "QUERY must have the same storage class as DATA.") ;
   }
   if (! vlmxIsReal (query_array)) {
     vlmxError(vlmxErrInvalidArgument,
-             "QUERY must be real.") ;
+              "QUERY must be real.") ;
   }
   if (! vlmxIsMatrix (query_array, forest->dimension, -1)) {
     vlmxError(vlmxErrInvalidArgument,
-             "QUERY must be a matrix with TREE.NUMDIMENSIONS rows.") ;
+              "QUERY must be a matrix with TREE.NUMDIMENSIONS rows.") ;
   }
 
   while ((opt = vlmxNextOption (in, nin, options, &next, &optarg)) >= 0) {
@@ -102,14 +99,14 @@ mexFunction(int nout, mxArray *out[],
         if (! vlmxIsScalar(optarg) ||
             (numNeighbors = mxGetScalar(optarg)) < 1) {
           vlmxError(vlmxErrInvalidArgument,
-                   "NUMNEIGHBORS must be a scalar not smaller than one.") ;
+                    "NUMNEIGHBORS must be a scalar not smaller than one.") ;
         }
         break;
 
       case opt_max_num_comparisons :
         if (! vlmxIsScalar(optarg)) {
           vlmxError(vlmxErrInvalidArgument,
-                   "MAXNUMCOMPARISONS must be a scalar.") ;
+                    "MAXNUMCOMPARISONS must be a scalar.") ;
         }
         maxNumComparisons = mxGetScalar(optarg) ;
         break;
@@ -122,19 +119,14 @@ mexFunction(int nout, mxArray *out[],
 
   vl_kdforest_set_max_num_comparisons (forest, maxNumComparisons) ;
 
-  neighbors = vl_malloc (sizeof(VlKDForestNeighbor) * numNeighbors) ;
-
   query = mxGetData (query_array) ;
   numQueries = mxGetN (query_array) ;
 
-  out[OUT_INDEX] = index_array = mxCreateNumericMatrix
-    (numNeighbors, numQueries, mxUINT32_CLASS, mxREAL) ;
+  out[OUT_INDEX] = mxCreateNumericMatrix (numNeighbors, numQueries, mxUINT32_CLASS, mxREAL) ;
+  out[OUT_DISTANCE] = mxCreateNumericMatrix (numNeighbors, numQueries, dataClass, mxREAL) ;
 
-  out[OUT_DISTANCE] = distance_array = mxCreateNumericMatrix
-    (numNeighbors, numQueries, dataClass, mxREAL) ;
-
-  index = mxGetData (index_array) ;
-  distance = mxGetData (distance_array) ;
+  index = mxGetData (out[OUT_INDEX]) ;
+  distance = mxGetData (out[OUT_DISTANCE]) ;
 
   if (verbose) {
     VL_PRINTF ("vl_kdforestquery: number of queries: %d\n", numQueries) ;
@@ -143,36 +135,12 @@ mexFunction(int nout, mxArray *out[],
                vl_kdforest_get_max_num_comparisons (forest)) ;
   }
 
-  for (qi = 0 ; qi < numQueries ; ++ qi) {
-    numComparisons += vl_kdforest_query (forest, neighbors, numNeighbors,
-                                         query) ;
-    switch (dataClass) {
-      case mxSINGLE_CLASS:
-      {
-        float * distance_ = (float*) distance ;
-        for (ni = 0 ; ni < numNeighbors ; ++ni) {
-          *index++     = neighbors[ni].index + 1 ;
-          *distance_++ = neighbors[ni].distance ;
-        }
-        query = (float*)query + vl_kdforest_get_data_dimension (forest) ;
-        distance = distance_ ;
-        break ;
-      }
-      case mxDOUBLE_CLASS:
-      {
-        double * distance_ = (double*) distance ;
-        for (ni = 0 ; ni < numNeighbors ; ++ni) {
-          *index++     = neighbors[ni].index + 1 ;
-          *distance_++ = neighbors[ni].distance ;
-        }
-        query = (double*)query + vl_kdforest_get_data_dimension (forest)  ;
-        distance = distance_ ;
-        break ;
-      }
-      default:
-        abort() ;
-    }
-  }
+  numComparisons = vl_kdforest_query_with_array (forest, index, numNeighbors, numQueries, distance, query) ;
+
+  vl_kdforest_delete(forest) ;
+
+  /* adjust for MATLAB indexing */
+  for (i = 0 ; i < (signed) (numNeighbors * numQueries) ; ++i) { index[i] ++ ; }
 
   if (verbose) {
     VL_PRINTF ("vl_kdforestquery: number of comparisons per query: %.3f\n",
@@ -180,7 +148,4 @@ mexFunction(int nout, mxArray *out[],
     VL_PRINTF ("vl_kdforestquery: number of comparisons per neighbor: %.3f\n",
                ((double) numComparisons) / (numQueries * numNeighbors)) ;
   }
-
-  vl_kdforest_delete (forest) ;
-  vl_free (neighbors) ;
 }
