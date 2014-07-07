@@ -208,13 +208,13 @@ VL_EXPORT double vl_get_cpu_time (void) ;
 
 #if (defined(VL_OS_LINUX) || defined(VL_OS_MACOSX)) && defined(VL_COMPILER_GNUC)
 
-void vl_constructor () __attribute__ ((constructor)) ;
-void vl_destructor () __attribute__ ((destructor))  ;
+VL_EXPORT void vl_constructor () __attribute__ ((constructor)) ;
+VL_EXPORT void vl_destructor () __attribute__ ((destructor))  ;
 
 #elif defined(VL_OS_WIN)
 
-void vl_constructor () ;
-void vl_destructor () ;
+VL_EXPORT void vl_constructor () ;
+VL_EXPORT void vl_destructor () ;
 
 #endif
 /* VL_GENERIC_H */
