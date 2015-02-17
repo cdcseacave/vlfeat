@@ -95,7 +95,7 @@ VlEnumerator vlCovDetDescriptorTypes [VL_COVDET_DESC_NUM] =
 
 /** ------------------------------------------------------------------
  ** @brief Export scale space into a MATLAB structure
- ** @param ss Pointer to the scale space to be xported
+ ** @param ss Pointer to the scale space to be exported
  ** @return Pointer to matlab structure with the scale space
  **/
 static mxArray *
@@ -148,12 +148,12 @@ _createArrayFromScaleSpace(VlScaleSpace const *ss)
 }
 
 /** ------------------------------------------------------------------
- ** @internal @brief Transpose desriptor
+ ** @internal @brief Transpose descriptor
  ** @param dst destination buffer.
  ** @param src source buffer.
  **
  ** The function writes to @a dst the transpose of the SIFT descriptor
- ** @a src. The tranpsose is defined as the descriptor that one
+ ** @a src. The transpose is defined as the descriptor that one
  ** obtains from computing the normal descriptor on the transposed
  ** image.
  **/
@@ -446,7 +446,7 @@ mexFunction(int nout, mxArray *out[],
     /* process the image */
     vl_covdet_put_image(covdet, image, numRows, numCols) ;
 
-    /* fill with frames: eitehr run the detector of poure them in */
+    /* fill with frames: either run the detector of poure them in */
     if (numUserFrames > 0) {
       vl_index k ;
 
@@ -596,7 +596,7 @@ mexFunction(int nout, mxArray *out[],
 
       numFeaturesAfter = vl_covdet_get_num_features(covdet) ;
       if (verbose && numFeaturesAfter > numFeaturesBefore) {
-        mexPrintf("vl_covdet: %d duplicate features were crated due to ambiguous "
+        mexPrintf("vl_covdet: %d duplicate features were created due to ambiguous "
                   "orientation detection (%d total)\n",
                   numFeaturesAfter - numFeaturesBefore, numFeaturesAfter) ;
       }
@@ -624,7 +624,6 @@ mexFunction(int nout, mxArray *out[],
     }
 
     if (nout >= 2) {
-      //      descriptorType = DESC_NONE;
       switch (descriptorType) {
         case VL_COVDET_DESC_NONE:
           OUT(DESCRIPTORS) = mxCreateDoubleMatrix(0,0,mxREAL);
@@ -632,8 +631,8 @@ mexFunction(int nout, mxArray *out[],
 
         case VL_COVDET_DESC_PATCH:
         {
-		  vl_size numFeatures ;
-		  VlCovDetFeature const * feature ;
+          vl_size numFeatures ;
+          VlCovDetFeature const * feature ;
           vl_index i ;
           vl_size w = 2*patchResolution + 1 ;
           float * desc ;
@@ -697,8 +696,8 @@ mexFunction(int nout, mxArray *out[],
              However, if NBO is not divisible by 4, then the configuration
              of the SIFT orientations is not symmetric by rotations of pi/2.
              Hence the only option is to rotate the descriptor further by
-             an angle we need to compute the descriptor rotaed by an additional pi/2
-             angle. In this manner, x concides and y is flipped.
+             an angle we need to compute the descriptor rotated by an additional pi/2
+             angle. In this manner, x coincides and y is flipped.
              */
             vl_sift_calc_raw_descriptor (sift,
                                          patchXY,
@@ -709,8 +708,6 @@ mexFunction(int nout, mxArray *out[],
                                          patchStep,
                                          VL_PI / 2) ;
 
-            //VL_PRINTF("%g\n", (double)patchRelativeExtent / (3.0 * (4 + 1) / 2)) ;
-
             flip_descriptor (desc, tempDesc) ;
             desc += dimension ;
           }
@@ -718,7 +715,7 @@ mexFunction(int nout, mxArray *out[],
           break ;
         }
         case VL_COVDET_DESC_LIOP :
-        {          // TODO: get parameters form input
+        {          /* TODO: get parameters form input */
           vl_size numFeatures = vl_covdet_get_num_features(covdet) ;
           vl_size dimension ;
           VlCovDetFeature const * feature = vl_covdet_get_features(covdet);
@@ -740,7 +737,6 @@ mexFunction(int nout, mxArray *out[],
           }
           OUT(DESCRIPTORS) = mxCreateNumericMatrix(dimension, numFeatures, mxSINGLE_CLASS, mxREAL);
           desc = mxGetData(OUT(DESCRIPTORS)) ;
-          vl_tic();
           for(i = 0; i < (signed)numFeatures; i++){
               vl_covdet_extract_patch_for_frame(covdet,
                                                 patch,
@@ -754,8 +750,7 @@ mexFunction(int nout, mxArray *out[],
               desc += dimension;
 
           }
-          mexPrintf("time: %f\n",vl_toc());
-          mexPrintf("threshold: %f\n",liop->intensityThreshold);
+          vl_liopdesc_delete(liop);
           break;
         }
 

@@ -52,7 +52,11 @@ $(eval $(call gendir, results, results))
 .PHONY: doc-deep
 
 ifdef MATLAB_PATH
+ifeq ($(call gt,$(MATLAB_VER),80300),)
+doc-matlab: doc/matlab/helpsearch-v2/segments.gen
+else
 doc-matlab: doc/matlab/helpsearch/deletable
+endif
 endif
 
 # use MATLAB to create the figures for the tutorials
@@ -67,6 +71,14 @@ doc-deep: all $(doc-dir) $(results-dir)
 	$(MAKE) doc
 
 # make documentation searchable in MATLAB
+doc/matlab/helpsearch-v2/segments.gen : doc/build/matlab/helpsearch-v2/segments.gen $(doc-dir)
+	cp -v doc/build/matlab/helptoc.xml doc/matlab/
+	cp -rv doc/build/matlab/helpsearch-v2 doc/matlab/
+
+doc/build/matlab/helpsearch-v2/segments.gen: doc/build/matlab/helptoc.xml
+	$(MATLAB_EXE) -$(ARCH) -nodisplay -r "builddocsearchdb('doc/build/matlab/') ; exit"
+
+# for older MATLABs
 doc/matlab/helpsearch/deletable : doc/build/matlab/helpsearch/deletable $(doc-dir)
 	cp -v doc/build/matlab/helptoc.xml doc/matlab/
 	cp -rv doc/build/matlab/helpsearch doc/matlab/
@@ -288,7 +300,7 @@ doc/index.html: $(webdoc_src) $(doc-dir) \
 # --------------------------------------------------------------------
 
 .PHONY: doc-clean, doc-archclean, doc-distclean
-no_dep_targets := doc-clean doc-archclean doc-distclean
+no_dep_targets += doc-clean doc-archclean doc-distclean
 
 VERSION: vl/generic.h
 	echo "$(VER)" > VERSION

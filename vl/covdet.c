@@ -352,12 +352,12 @@ comparing neighborhoods of them.
 
 The next difficulty is to guarantee that detection is co-variant with
 image transformations. Hence, if $u$ is the pose of a feature
-extracted from image $\ell$, then the feature of pose $u' = w[u]$ must
-be detected in the transformed image $\ell' = w[\ell]$.
+extracted from image $\ell$, then the transformed pose $u' = w[u]$
+must be detected in the transformed image $\ell' = w[\ell]$.
 
 Since features are extracted in correspondence of the local maxima of
 the cornerness score, a sufficient condition is that corresponding
-features attain the same score in the two images.
+features attain the same score in the two images:
 
 \[
 \forall u\in\mathcal{W}: \quad F(u;\ell) = F(w[u];w[\ell]),
@@ -370,7 +370,7 @@ score *after normalizing the image* by the inverse of the candidate
 feature pose warp $u$, as follows:
 
 \[
-  F(u;\ell) = F(1;u^{-1}[\ell]) = F(1;\ell \circ u) = \mathcal{F}(\ell \circ u).
+  F(u;\ell) = F(1;u^{-1}[\ell]) = F(1;\ell \circ u) = \mathcal{F}(\ell \circ u),
 \]
 
 where $1 = u^{-1} \circ u$ is the identity transformation and
@@ -378,15 +378,20 @@ $\mathcal{F}$ is an arbitrary functional. Intuitively, co-variant
 detection is obtained by looking if the appearance of the feature
 resembles a corner only *after normalization*. Formally:
 
-\[
+@f{align*}
+F(w[u];w[\ell])
+&=
 F(w \circ u ;\ell \circ w^{-1})
-=
-\mathcal{F}(1; \ell \circ w^{-1} \circ w \circ u)
-=
-\mathcal{F}(1; \ell\circ u)
-=
-F(w;\ell).
-\]
+\\
+&=
+F(1; \ell \circ w^{-1} \circ w \circ u)
+\\
+&=
+\mathcal{F}(\ell\circ u)
+\\
+&=
+F(u;\ell).
+@f}
 
 Concrete examples of the functional $\mathcal{F}$ are given in @ref
 covdet-corner-types.
@@ -2200,7 +2205,7 @@ vl_covdet_extract_patch_helper (VlCovDet * self,
 
   /*
    Determine the best level (o,s) such that sigma_(o,s) factor <= sigma.
-   This can be obtained by scanning octaves from smalles to largest
+   This can be obtained by scanning octaves from smallest to largest
    and stopping when no level in the octave satisfies the relation.
 
    Given the range of octave availables, do the best you can.
@@ -2255,7 +2260,7 @@ vl_covdet_extract_patch_helper (VlCovDet * self,
      Warp the patch domain [x0hat,y0hat,x1hat,y1hat] to the image domain/
      Obtain a box [x0,y0,x1,y1] enclosing that wrapped box, and then
      an integer vertexes version [x0i, y0i, x1i, y1i], making room
-     for one pixel at the boundaty to simplify bilinear interpolation
+     for one pixel at the boundary to simplify bilinear interpolation
      later on.
      */
     vl_index x0i, y0i, x1i, y1i ;
@@ -2405,7 +2410,7 @@ vl_covdet_extract_patch_helper (VlCovDet * self,
  ** The function considers a patch of extent <code>[-extent,extent]</code>
  ** on each side, with a side counting <code>2*resolution+1</code> pixels.
  ** In attempts to extract from the scale space a patch
- ** baed on the affine warping specified by @a frame in such a way
+ ** based on the affine warping specified by @a frame in such a way
  ** that the resulting smoothing of the image is @a sigma (in the
  ** patch frame).
  **
@@ -2824,7 +2829,7 @@ vl_covdet_extract_orientations_for_frame (VlCovDet * self,
     }
   }
 
-  /* sort the oritentations by decreasing scores */
+  /* sort the orientations by decreasing scores */
   qsort(self->orientations,
         *numOrientations,
         sizeof(VlCovDetFeatureOrientation),
