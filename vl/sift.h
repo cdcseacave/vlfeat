@@ -114,6 +114,9 @@ VL_EXPORT
 void  vl_sift_detect                     (VlSiftFilt *f) ;
 
 VL_EXPORT
+void  vl_sift_update_gradient            (VlSiftFilt *f) ;
+
+VL_EXPORT
 int   vl_sift_calc_keypoint_orientations (VlSiftFilt *f,
                                           double angles [4],
                                           VlSiftKeypoint const*k);
