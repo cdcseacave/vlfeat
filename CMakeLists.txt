@@ -32,7 +32,6 @@ ComposePackageLibSuffix()
 ConfigCompilerAndLinker()
 
 # List config options
-SET(VLFeat_USE_SSE ON CACHE BOOL "Enable SSE optimizations")
 SET(VLFeat_USE_OPENMP ON CACHE BOOL "Enable OpenMP library")
 
 include_directories("${VLFeat_SOURCE_DIR}")
@@ -59,8 +58,15 @@ if(MSVC)
 	LIST(APPEND VLFeat_DEFINITIONS "/wd4661") # disable warnings on no suitable definition provided for explicit template instantiation request
 	LIST(APPEND VLFeat_DEFINITIONS "/wd4996") # for deprecated functions
 endif()
-if(VLFeat_USE_SSE)
-	LIST(APPEND VLFeat_DEFINITIONS -D__SSE2__) 
+if(ENABLE_SSE2)
+	LIST(APPEND VLFeat_DEFINITIONS -D__SSE2__)
+else()
+	LIST(APPEND VLFeat_DEFINITIONS -DVL_DISABLE_SSE2)
+endif()
+if(ENABLE_AVX)
+	LIST(APPEND VLFeat_DEFINITIONS -D__AVX__)
+else()
+	LIST(APPEND VLFeat_DEFINITIONS -DVL_DISABLE_AVX)
 endif()
 ADD_DEFINITIONS(${VLFeat_DEFINITIONS})
 
