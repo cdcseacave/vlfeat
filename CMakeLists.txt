@@ -18,8 +18,8 @@ PROJECT(VLFeat)
 
 # fix CMake IntDir variable
 if(MSVC AND "${MSVC_VERSION}" STRGREATER "1500")
-    #set(COTIRE_INTDIR "$(Platform)/cotire")
-    set(CMAKE_CFG_INTDIR "$(Platform)/$(Configuration)")
+    #SET(COTIRE_INTDIR "$(Platform)/cotire")
+    SET(CMAKE_CFG_INTDIR "$(Platform)/$(Configuration)")
 endif()
 
 # Define helper functions and macros.
@@ -34,17 +34,20 @@ ConfigCompilerAndLinker()
 # List config options
 SET(VLFeat_USE_OPENMP ON CACHE BOOL "Enable OpenMP library")
 
-include_directories("${VLFeat_SOURCE_DIR}")
+INCLUDE_DIRECTORIES("${VLFeat_SOURCE_DIR}")
 
 # Find required packages
 if(VLFeat_USE_OPENMP)
 	FIND_PACKAGE(OpenMP)
 	if(OPENMP_FOUND)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-		add_definitions(-D_USE_OPENMP)
+		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+		ADD_DEFINITIONS(-D_USE_OPENMP)
 	else()
-		message("-- Can't find OpenMP. Continuing without it.")
+		ADD_DEFINITIONS(-DVL_DISABLE_THREADS -DVL_DISABLE_OPENMP)
+		MESSAGE("-- Can't find OpenMP. Continuing without it.")
 	endif()
+else()
+	ADD_DEFINITIONS(-DVL_DISABLE_THREADS -DVL_DISABLE_OPENMP)
 endif()
 
 # Set defines
