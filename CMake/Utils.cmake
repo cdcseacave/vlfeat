@@ -261,7 +261,7 @@ macro(add_option variable description value)
 endmacro()
 
 
-# Set as Pre-Compiled Header automaticaly or to the given file name
+# Set as Pre-Compiled Header automatically or to the given file name
 macro(set_target_pch TRGT)
 	if(ENABLE_PRECOMPILED_HEADERS)
 		if(NOT ${ARGN} STREQUAL "")
@@ -376,6 +376,7 @@ macro(optimize_default_compiler_settings)
 	add_option(ENABLE_PROFILING           "Enable profiling in the GCC compiler (Add flags: -g -pg)" OFF  IF CMAKE_COMPILER_IS_GNUCXX )
 	add_option(ENABLE_WHOLE_PROGRAM_OPTIMIZATION "Enable whole program pptimization for the Visual Studio compiler (Add flags: /GL /LTCG)" OFF  IF MSVC )
 	add_option(ENABLE_OMIT_FRAME_POINTER  "Enable -fomit-frame-pointer for GCC"                      ON   IF CMAKE_COMPILER_IS_GNUCXX )
+	add_option(ENABLE_MTUNE_GENERIC       "Enable -mtune=generic for GCC"                            OFF  IF CMAKE_COMPILER_IS_GNUCXX )
 	add_option(ENABLE_POWERPC             "Enable PowerPC for GCC"                                   ON   IF (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_SYSTEM_PROCESSOR MATCHES powerpc.*) )
 	add_option(ENABLE_FAST_MATH           "Enable -ffast-math (not recommended for GCC 4.6.x)"       OFF  IF (CMAKE_COMPILER_IS_GNUCXX AND (X86 OR X86_64)) )
 	add_option(ENABLE_SSE                 "Enable SSE instructions"                                  ON   IF (MSVC OR CMAKE_COMPILER_IS_GNUCXX AND (X86 OR X86_64)) )
@@ -389,6 +390,19 @@ macro(optimize_default_compiler_settings)
 	add_option(ENABLE_EXTRA_WARNINGS      "Show extra warnings (usually not critical)"               OFF )
 	add_option(ENABLE_NOISY_WARNINGS      "Show all warnings even if they are too noisy"             OFF )
 	add_option(ENABLE_WARNINGS_AS_ERRORS  "Treat warnings as errors"                                 OFF )
+
+	# Set a default build type if none was specified
+	if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+	  if(MSVC)
+	    message(STATUS "Setting build type to 'Debug;Release' as none was specified.")
+	    set(CMAKE_BUILD_TYPE "Debug;Release" CACHE STRING "Choose the type of build." FORCE)
+	  else()
+	    message(STATUS "Setting build type to 'Release' as none was specified.")
+	    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build." FORCE)
+	  endif()
+	  # Set the possible values of build type for cmake-gui
+	  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+	endif()
 
 	if(MINGW)
 	  # mingw compiler is known to produce unstable SSE code with -O3 hence we are trying to use -O2 instead
@@ -486,6 +500,11 @@ macro(optimize_default_compiler_settings)
 	  endif()
 	  if(ENABLE_FAST_MATH)
 		add_extra_compiler_option(-ffast-math)
+	  endif()
+	  if(ENABLE_MTUNE_GENERIC)
+		add_extra_compiler_option(-mtune=generic)
+	  else()
+		add_extra_compiler_option(-march=native)
 	  endif()
 	  if(ENABLE_POWERPC)
 		add_extra_compiler_option("-mcpu=G3 -mtune=G5")
@@ -792,6 +811,18 @@ endfunction()
 
 function(cxx_library_with_type name folder type cxx_flags)
   cxx_library_with_type_no_pch("${name}" "${folder}" "${type}" "${cxx_flags}" ${ARGN})
+  # Generate precompiled headers
+  set_target_pch("${name}")
+endfunction()
+
+# Same for C.
+function(c_library_with_type_no_pch name folder type c_flags)
+  cxx_library_with_type_no_pch("${name}" "${folder}" "${type}" "${c_flags}" ${ARGN})
+  set_target_properties("${name}" PROPERTIES LINKER_LANGUAGE C)
+endfunction()
+
+function(c_library_with_type name folder type c_flags)
+  c_library_with_type_no_pch("${name}" "${folder}" "${type}" "${c_flags}" ${ARGN})
   # Generate precompiled headers
   set_target_pch("${name}")
 endfunction()
