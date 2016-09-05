@@ -793,6 +793,29 @@ macro(ConfigCompilerAndLinker)
   SET(c_default "${CMAKE_C_FLAGS} ${cxx_base_flags}" CACHE PATH "Common compile C flags")
 endmacro()
 
+# Initialize variables needed for a library type project.
+macro(ConfigLibrary)
+	# Offer the user the choice of overriding the installation directories
+	set(INSTALL_LIB_DIR "lib/${PROJECT_NAME}" CACHE PATH "Installation directory for libraries")
+	set(INSTALL_BIN_DIR "bin/${PROJECT_NAME}" CACHE PATH "Installation directory for executables")
+	set(INSTALL_INCLUDEROOT_DIR "include" CACHE PATH "Installation directory for project header files")
+	set(INSTALL_INCLUDE_DIR "${INSTALL_INCLUDEROOT_DIR}/${PROJECT_NAME}" CACHE PATH "Installation directory for header files")
+	if(WIN32 AND NOT CYGWIN)
+		set(DEF_INSTALL_CMAKE_DIR "CMake")
+	else()
+		set(DEF_INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
+	endif()
+	set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH "Installation directory for CMake files")
+	 
+	# Make relative paths absolute (needed later on)
+	foreach(p LIB BIN INCLUDEROOT INCLUDE CMAKE)
+		set(var INSTALL_${p}_DIR)
+		if(NOT IS_ABSOLUTE "${${var}}")
+			set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
+		endif()
+	endforeach()
+endmacro()
+
 # Defines the main libraries.  User tests should link
 # with one of them.
 function(cxx_library_with_type_no_pch name folder type cxx_flags)

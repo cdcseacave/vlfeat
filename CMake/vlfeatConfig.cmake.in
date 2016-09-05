@@ -1,0 +1,18 @@
+# - Configure file for the vlfeat package
+# It defines the following variables
+#  VLFEAT_INCLUDE_DIRS - include directories for vlfeat
+#  VLFEAT_LIBRARIES    - libraries to link against
+#  VLFEAT_BINARIES     - the binaries
+
+# Compute paths
+get_filename_component(VLFEAT_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+set(VLFEAT_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+if(NOT TARGET MVS AND NOT VLFEAT_BINARY_DIR)
+	include("${VLFEAT_CMAKE_DIR}/vlfeatTargets.cmake")
+endif()
+
+# These are IMPORTED targets created by vlfeatTargets.cmake
+set(VLFEAT_LIBRARIES vlfeat)
+set(VLFEAT_BINARIES sift)
