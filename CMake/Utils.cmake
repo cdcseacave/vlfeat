@@ -5,14 +5,18 @@
 # - This file can be run multiple times, therefore it shouldn't
 #   have any side effects other than defining the functions and macros.
 
+INCLUDE(CheckCXXCompilerFlag)
+INCLUDE(CheckIncludeFile)
+
 # BUILD_SHARED_LIBS is a standard CMake variable, but we declare it here to
 # make it prominent in the GUI.
 OPTION(BUILD_SHARED_LIBS "Build shared libraries (DLLs)" OFF)
+OPTION(BUILD_SHARED_LIBS_FULL "Expose all functionality when built as shared libraries (DLLs)" OFF)
 OPTION(BUILD_EXCEPTIONS_ENABLED "Enable support for exceptions" ON)
 OPTION(BUILD_RTTI_ENABLED "Enable support run-time type information" ON)
 OPTION(BUILD_STATIC_RUNTIME "Link staticaly the run-time library" ON)
 OPTION(CMAKE_SUPPRESS_REGENERATION "This will cause CMake to not put in the rules that re-run CMake. This might be useful if you want to use the generated build files on another machine" OFF)
-OPTION(CMAKE_USE_RELATIVE_PATHS "Try to use relative paths in generated projects" ON)
+OPTION(CMAKE_USE_RELATIVE_PATHS "Try to use relative paths in generated projects" OFF)
 
 # Organize projects into folders
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -67,23 +71,23 @@ macro(GetOperatingSystemArchitectureBitness)
 		set(MSVC64 1)
 	endif()
 
-	if(NOT APPLE)
-	  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+	if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 		set(CLANG 1)
-		set(CMAKE_COMPILER_IS_GNUCXX 1)
-	  endif()
-	  if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+		if(NOT APPLE)
+			set(CMAKE_COMPILER_IS_GNUCXX 1)
+		endif()
+	endif()
+	if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
 		set(CLANG 1)
-		set(CMAKE_COMPILER_IS_GNUCC 1)
-	  endif()
+		if(NOT APPLE)
+			set(CMAKE_COMPILER_IS_GNUCC 1)
+		endif()
 	endif()
 
 	# Detect Intel ICC compiler -- for -fPIC in 3rdparty ( UNIX ONLY ):
-	#  see  include/opencv/cxtypes.h file for related   ICC & FLG_ICC defines.
-	# NOTE: The system needs to determine if the '-fPIC' option needs to be added
-	#  for the 3rdparty static libs being compiled.  The CMakeLists.txt files
-	#  in 3rdparty use the FLG_ICC definition being set here to determine if
-	#  the -fPIC flag should be used.
+	#  the system needs to determine if the '-fPIC' option needs to be added
+	#  for the 3rdparty static libs being compiled; use the FLG_ICC definition
+	#  being set here to determine if the -fPIC flag should be used
 	if(UNIX)
 		if  (__ICL)
 			set(FLG_ICC   __ICL)
@@ -115,10 +119,11 @@ macro(GetOperatingSystemArchitectureBitness)
 		execute_process(COMMAND ${CMAKE_CXX_COMPILER} --version
 					  OUTPUT_VARIABLE CMAKE_FLG_GCC_VERSION_FULL
 					  OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-		execute_process(COMMAND ${CMAKE_CXX_COMPILER} -v
-					  ERROR_VARIABLE CMAKE_FLG_GCC_INFO_FULL
-					  OUTPUT_STRIP_TRAILING_WHITESPACE)
+		if(CMAKE_FLG_GCC_VERSION_FULL STREQUAL "")
+			execute_process(COMMAND ${CMAKE_CXX_COMPILER} -v
+						  ERROR_VARIABLE CMAKE_FLG_GCC_VERSION_FULL
+						  OUTPUT_STRIP_TRAILING_WHITESPACE)
+		endif()
 
 		# Typical output in CMAKE_FLG_GCC_VERSION_FULL: "c+//0 (whatever) 4.2.3 (...)"
 		# Look for the version number
@@ -233,7 +238,7 @@ macro(add_option variable description value)
     endif()
   endforeach()
   unset(__varname)
-  if("${__condition}" STREQUAL "")
+  if(__condition STREQUAL "")
     set(__condition 2 GREATER 1)
   endif()
 
@@ -263,7 +268,7 @@ endmacro()
 
 # Set as Pre-Compiled Header automatically or to the given file name
 macro(set_target_pch TRGT)
-	if(ENABLE_PRECOMPILED_HEADERS)
+	if(ENABLE_PRECOMPILED_HEADERS AND COMMAND cotire)
 		if(NOT ${ARGN} STREQUAL "")
 			set_target_properties("${TRGT}" PROPERTIES COTIRE_CXX_PREFIX_HEADER_INIT "${ARGN}")
 		endif()
@@ -370,13 +375,14 @@ macro(add_extra_compiler_option option)
 endmacro()
 
 macro(optimize_default_compiler_settings)
-	# OpenCV build options
+	# build options
 	# ===================================================
 	add_option(ENABLE_PRECOMPILED_HEADERS "Use precompiled headers"                                  ON   IF (NOT IOS) )
 	add_option(ENABLE_PROFILING           "Enable profiling in the GCC compiler (Add flags: -g -pg)" OFF  IF CMAKE_COMPILER_IS_GNUCXX )
-	add_option(ENABLE_WHOLE_PROGRAM_OPTIMIZATION "Enable whole program pptimization for the Visual Studio compiler (Add flags: /GL /LTCG)" OFF  IF MSVC )
+	add_option(ENABLE_WHOLE_PROGRAM_OPTIMIZATION "Enable whole program pptimization for the Visual Studio compiler (Add flags: /GL /LTCG)" ON  IF MSVC )
 	add_option(ENABLE_OMIT_FRAME_POINTER  "Enable -fomit-frame-pointer for GCC"                      ON   IF CMAKE_COMPILER_IS_GNUCXX )
-	add_option(ENABLE_MTUNE_GENERIC       "Enable -mtune=generic for GCC"                            OFF  IF CMAKE_COMPILER_IS_GNUCXX )
+	add_option(ENABLE_STRICT_ALIASING     "Enable -fstrict-aliasing for GCC"                         OFF  IF CMAKE_COMPILER_IS_GNUCXX )
+	add_option(ENABLE_GENERIC_ARCHITECTURE "Enable -march=x86-64 for GCC"                            OFF  IF CMAKE_COMPILER_IS_GNUCXX )
 	add_option(ENABLE_POWERPC             "Enable PowerPC for GCC"                                   ON   IF (CMAKE_COMPILER_IS_GNUCXX AND CMAKE_SYSTEM_PROCESSOR MATCHES powerpc.*) )
 	add_option(ENABLE_FAST_MATH           "Enable -ffast-math (not recommended for GCC 4.6.x)"       OFF  IF (CMAKE_COMPILER_IS_GNUCXX AND (X86 OR X86_64)) )
 	add_option(ENABLE_SSE                 "Enable SSE instructions"                                  ON   IF (MSVC OR CMAKE_COMPILER_IS_GNUCXX AND (X86 OR X86_64)) )
@@ -428,6 +434,28 @@ macro(optimize_default_compiler_settings)
 	set(BUILD_EXTRA_EXE_LINKER_FLAGS_RELEASE "")
 	set(BUILD_EXTRA_EXE_LINKER_FLAGS_DEBUG "")
 
+	# try to enable C++14/C++11 support
+	check_cxx_compiler_flag("-std=c++14" COMPILER_HAS_CXX14_FLAG)
+	if (COMPILER_HAS_CXX14_FLAG)
+		# update CMAKE_REQUIRED_FLAGS used by CheckCXXSourceCompiles
+		# to include -std=c++14
+		set(CMAKE_CXX_STANDARD 14)
+	else()
+		check_cxx_compiler_flag("-std=c++11" COMPILER_HAS_CXX11_FLAG)
+		if (COMPILER_HAS_CXX11_FLAG)
+			# update CMAKE_REQUIRED_FLAGS used by CheckCXXSourceCompiles
+			# to include -std=c++11
+			set(CMAKE_CXX_STANDARD 11)
+		endif()
+	endif()
+	if(CLANG AND (CMAKE_CXX_STANDARD EQUAL 11 OR CMAKE_CXX_STANDARD EQUAL 14))
+		set(CMAKE_EXE_LINKER_FLAGS "-stdlib=libc++")
+		add_extra_compiler_option(-stdlib=libc++)
+	endif()
+	set(CMAKE_CXX_STANDARD_REQUIRED ON)
+	set(CMAKE_CXX_EXTENSIONS OFF)
+	message("Compiling with C++${CMAKE_CXX_STANDARD}")
+
 	if(MINGW)
 	  # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=40838
 	  # here we are trying to workaround the problem
@@ -441,18 +469,19 @@ macro(optimize_default_compiler_settings)
 	  # High level of warnings.
 	  add_extra_compiler_option(-W)
 	  add_extra_compiler_option(-Wall)
-	  add_extra_compiler_option(-Werror=return-type)
-	  add_extra_compiler_option(-Werror=non-virtual-dtor)
+	  #add_extra_compiler_option(-Werror=return-type)
+	  #add_extra_compiler_option(-Werror=non-virtual-dtor)
 	  add_extra_compiler_option(-Werror=address)
 	  add_extra_compiler_option(-Werror=sequence-point)
 	  add_extra_compiler_option(-Wformat)
 	  add_extra_compiler_option(-Werror=format-security -Wformat)
 	  add_extra_compiler_option(-Wstrict-prototypes)
 	  add_extra_compiler_option(-Winit-self)
-	  add_extra_compiler_option(-Wshadow)
 	  add_extra_compiler_option(-Wsign-promo)
+	  add_extra_compiler_option(-Wreorder)
 
 	  if(ENABLE_NOISY_WARNINGS)
+		add_extra_compiler_option(-Wshadow)
 		add_extra_compiler_option(-Wextra)
 		add_extra_compiler_option(-Wcast-align)
 		add_extra_compiler_option(-Wstrict-aliasing=2)
@@ -460,13 +489,18 @@ macro(optimize_default_compiler_settings)
 		add_extra_compiler_option(-Wmissing-prototypes)
 		add_extra_compiler_option(-Wpointer-arith)
 		add_extra_compiler_option(-Wundef)
+		add_extra_compiler_option(-Wswitch)
 	  else()
-	  	add_extra_compiler_option(-Wno-undef)
+		add_extra_compiler_option(-Wno-undef)
+		add_extra_compiler_option(-Wno-switch)
 		add_extra_compiler_option(-Wno-comment)
 		add_extra_compiler_option(-Wno-narrowing)
 		add_extra_compiler_option(-Wno-attributes)
+		add_extra_compiler_option(-Wno-enum-compare)
 		add_extra_compiler_option(-Wno-missing-declarations)
 		add_extra_compiler_option(-Wno-missing-prototypes)
+		add_extra_compiler_option(-Wno-missing-field-initializers)
+		add_extra_compiler_option(-Wno-unused-result)
 		add_extra_compiler_option(-Wno-unused-local-typedefs)
 		add_extra_compiler_option(-Wno-delete-non-virtual-dtor)
 		add_extra_compiler_option(-Wno-unnamed-type-template-args)
@@ -498,13 +532,20 @@ macro(optimize_default_compiler_settings)
 	  else()
 		add_extra_compiler_option(-fno-omit-frame-pointer)
 	  endif()
+	  if(ENABLE_STRICT_ALIASING)
+		add_extra_compiler_option(-fstrict-aliasing)
+	  else()
+		add_extra_compiler_option(-fno-strict-aliasing)
+	  endif()
 	  if(ENABLE_FAST_MATH)
 		add_extra_compiler_option(-ffast-math)
-	  endif()
-	  if(ENABLE_MTUNE_GENERIC)
-		add_extra_compiler_option(-mtune=generic)
 	  else()
-		add_extra_compiler_option(-march=native)
+		add_extra_compiler_option(-frounding-math)
+	  endif()
+	  if(ENABLE_GENERIC_ARCHITECTURE)
+		add_extra_compiler_option(-march=x86-64)
+	  else()
+		add_extra_compiler_option(-march=haswell)
 	  endif()
 	  if(ENABLE_POWERPC)
 		add_extra_compiler_option("-mcpu=G3 -mtune=G5")
@@ -515,12 +556,6 @@ macro(optimize_default_compiler_settings)
 	  if(ENABLE_SSE2)
 		add_extra_compiler_option(-msse2)
 	  endif()
-	  if(CLANG)
-	    #set(ENABLE_PRECOMPILED_HEADERS OFF CACHE BOOL "" FORCE)
-	  else()
-	    add_extra_compiler_option(-fpermissive)
-	  endif()
-	  add_extra_compiler_option(-std=c++11)
 
 	  # SSE3 and further should be disabled under MingW because it generates compiler errors
 	  if(NOT MINGW)
@@ -617,12 +652,6 @@ macro(optimize_default_compiler_settings)
 		endif()
 	  endif()
 
-	  if(ENABLE_SSE3)
-		set(BUILD_EXTRA_FLAGS "${BUILD_EXTRA_FLAGS} /arch:SSE3")
-	  endif()
-	  if(ENABLE_SSE4_1)
-		set(BUILD_EXTRA_FLAGS "${BUILD_EXTRA_FLAGS} /arch:SSE4.1")
-	  endif()
 	  if(ENABLE_AVX)
 		set(BUILD_EXTRA_FLAGS "${BUILD_EXTRA_FLAGS} /arch:AVX")
 	  endif()
@@ -642,10 +671,13 @@ macro(optimize_default_compiler_settings)
 	endif()
 
 	# Extra link libs if the user selects building static libs:
-	if(NOT BUILD_SHARED_LIBS AND CMAKE_COMPILER_IS_GNUCXX AND NOT ANDROID)
-	  # Android does not need these settings because they are already set by toolchain file
-	  set(BUILD_EXTRA_LINKER_LIBS ${BUILD_EXTRA_LINKER_LIBS} stdc++)
-	  set(BUILD_EXTRA_FLAGS "-fPIC ${BUILD_EXTRA_FLAGS}")
+	# Android does not need these settings because they are already set by toolchain file
+	if(CMAKE_COMPILER_IS_GNUCXX AND NOT ANDROID)
+		if(BUILD_SHARED_LIBS)
+			set(BUILD_EXTRA_FLAGS "${BUILD_EXTRA_FLAGS} -fPIC")
+		else()
+			set(BUILD_EXTRA_LINKER_LIBS "${BUILD_EXTRA_LINKER_LIBS} stdc++")
+		endif()
 	endif()
 
 	# Add user supplied extra options (optimization, etc...)
@@ -693,6 +725,7 @@ macro(optimize_default_compiler_settings)
 		string(REPLACE "/Zm1000" "" ${flags} "${${flags}}")
 	  endforeach()
 	endif()
+	CHECK_INCLUDE_FILE("inttypes.h" HAVE_INTTYPES_H)
 endmacro()
 
 
@@ -779,12 +812,14 @@ macro(ConfigCompilerAndLinker)
 
   if (BUILD_EXCEPTIONS_ENABLED)
     set(cxx_exception_support "${CMAKE_CXX_FLAGS} ${cxx_base_flags} ${cxx_exception_flags}")
+    set(_HAS_EXCEPTIONS TRUE)
   else()
     set(cxx_exception_support "${CMAKE_CXX_FLAGS} ${cxx_base_flags} ${cxx_no_exception_flags}")
   endif()
 
   if (BUILD_RTTI_ENABLED)
     set(cxx_rtti_support "")
+    set(_HAS_RTTI TRUE)
   else()
     set(cxx_rtti_support "${cxx_no_rtti_flags}")
   endif()
@@ -823,7 +858,7 @@ function(cxx_library_with_type_no_pch name folder type cxx_flags)
   # ARGN refers to additional arguments after 'cxx_flags'.
   add_library("${name}" ${type} ${ARGN})
   set_target_properties("${name}" PROPERTIES COMPILE_FLAGS "${cxx_flags}")
-  if (BUILD_SHARED_LIBS OR type STREQUAL "SHARED")
+  if ((BUILD_SHARED_LIBS AND NOT type STREQUAL "STATIC") OR type STREQUAL "SHARED")
     set_target_properties("${name}" PROPERTIES COMPILE_DEFINITIONS "_USRDLL")
   else()
     set_target_properties("${name}" PROPERTIES COMPILE_DEFINITIONS "_LIB")
@@ -911,4 +946,17 @@ endfunction()
 # test/name.cc is already implicitly included in the source file list.
 function(cxx_test name folder libs)
   cxx_test_with_flags("${name}" "${folder}" "${cxx_default}" "${libs}" "test/${name}.cc" ${ARGN})
+endfunction()
+
+# td_add_executable(name folder cxx_flags libs ...)
+#
+# same as cxx_executable_with_flags_no_pch, but links to Catch and breakpad
+function(td_add_executable name folder cxx_flags libs)
+  if(3Dnovator_USE_BREAKPAD AND BREAKPAD_FOUND)
+    LIST(APPEND libs ${BREAKPAD_LIBS})
+  endif()
+  if(3Dnovator_ENABLE_TESTING)
+    LIST(APPEND libs Catch)
+  endif()
+  cxx_executable_with_flags_no_pch("${name}" "${folder}" "${cxx_flags}" "${libs}" ${ARGN})
 endfunction()
