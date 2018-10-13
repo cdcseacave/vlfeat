@@ -230,7 +230,7 @@ vl_covdet_drop_features_outside (VlCovDet * self, double margin) ;
 /** @name Retrieve data and parameters
  ** @{ */
 VL_EXPORT vl_size vl_covdet_get_num_features (VlCovDet const * self) ;
-VL_EXPORT void * vl_covdet_get_features (VlCovDet * self) ;
+VL_EXPORT VlCovDetFeature * vl_covdet_get_features (VlCovDet * self) ;
 VL_EXPORT vl_index vl_covdet_get_first_octave (VlCovDet const * self) ;
 VL_EXPORT vl_size vl_covdet_get_octave_resolution (VlCovDet const * self) ;
 VL_EXPORT double vl_covdet_get_peak_threshold (VlCovDet const * self) ;

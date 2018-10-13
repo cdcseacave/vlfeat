@@ -3420,7 +3420,7 @@ vl_covdet_get_num_features (VlCovDet const * self)
 /** @brief Get the stored frames
  ** @return frames stored in the detector.
  **/
-void *
+VlCovDetFeature *
 vl_covdet_get_features (VlCovDet * self)
 {
   return self->features ;
