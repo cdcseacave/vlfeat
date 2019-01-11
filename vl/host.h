@@ -318,11 +318,19 @@ defined(__DOXYGEN__)
 #    define isnan _isnan
 #  endif
 #  ifdef VL_BUILD_DLL
+#   ifdef _USRDLL
 #    ifdef __cplusplus
 #      define VL_EXPORT extern "C" __declspec(dllexport)
 #    else
 #      define VL_EXPORT extern __declspec(dllexport)
 #    endif
+#   else
+#    ifdef __cplusplus
+#      define VL_EXPORT extern "C" __declspec(dllimport)
+#    else
+#      define VL_EXPORT extern __declspec(dllimport)
+#    endif
+#   endif
 #  else
 #    ifdef __cplusplus
 #      define VL_EXPORT extern "C"

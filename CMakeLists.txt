@@ -34,6 +34,7 @@ ConfigLibrary()
 
 # List config options
 SET(vlfeat_USE_OPENMP ON CACHE BOOL "Enable OpenMP library")
+SET(BUILD_APPS ON CACHE BOOL "Build applications")
 
 INCLUDE_DIRECTORIES("${vlfeat_SOURCE_DIR}")
 
@@ -49,6 +50,10 @@ if(vlfeat_USE_OPENMP)
 	endif()
 else()
 	ADD_DEFINITIONS(-DVL_DISABLE_THREADS -DVL_DISABLE_OPENMP)
+endif()
+
+if (BUILD_SHARED_LIBS)
+	ADD_DEFINITIONS(-DVL_BUILD_DLL)
 endif()
 
 # Set defines
@@ -78,7 +83,9 @@ ADD_DEFINITIONS(${vlfeat_DEFINITIONS})
 ADD_SUBDIRECTORY(vl)
 
 # Add applications
-ADD_SUBDIRECTORY(src)
+if (BUILD_APPS)
+	ADD_SUBDIRECTORY(src)
+endif()
 
 # Add all targets to the build-tree export set
 export(TARGETS vlfeat FILE "${PROJECT_BINARY_DIR}/vlfeatTargets.cmake")

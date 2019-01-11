@@ -831,8 +831,8 @@ endmacro()
 # Initialize variables needed for a library type project.
 macro(ConfigLibrary)
 	# Offer the user the choice of overriding the installation directories
-	set(INSTALL_LIB_DIR "lib/${PROJECT_NAME}" CACHE PATH "Installation directory for libraries")
-	set(INSTALL_BIN_DIR "bin/${PROJECT_NAME}" CACHE PATH "Installation directory for executables")
+	set(INSTALL_LIB_DIR "lib" CACHE PATH "Installation directory for libraries")
+	set(INSTALL_BIN_DIR "bin" CACHE PATH "Installation directory for executables")
 	set(INSTALL_INCLUDEROOT_DIR "include" CACHE PATH "Installation directory for project header files")
 	set(INSTALL_INCLUDE_DIR "${INSTALL_INCLUDEROOT_DIR}/${PROJECT_NAME}" CACHE PATH "Installation directory for header files")
 	if(WIN32 AND NOT CYGWIN)
