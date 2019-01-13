@@ -1450,20 +1450,24 @@ vl_refine_local_extreum_2 (VlCovDetExtremum2 * refined,
 #define VL_COVDET_HARRIS_DEF_EDGE_THRESHOLD 10.0
 #define VL_COVDET_HESSIAN_DEF_PEAK_THRESHOLD 0.003
 #define VL_COVDET_HESSIAN_DEF_EDGE_THRESHOLD 10.0
+#define VL_COVDET_GSS_BASE_SCALE 1.6
 
 /** @brief Covariant feature detector */
 struct _VlCovDet
 {
-  VlScaleSpace *gss ;        /**< Gaussian scale space. */
-  VlScaleSpace *css ;        /**< Cornerness scale space. */
-  VlCovDetMethod method ;    /**< feature extraction method. */
-  double peakThreshold ;     /**< peak threshold. */
-  double edgeThreshold ;     /**< edge threshold. */
-  double lapPeakThreshold;   /**< peak threshold for Laplacian scale selection. */
+  VlScaleSpace *gss ;          /**< Gaussian scale space. */
+  VlScaleSpace *css ;          /**< Cornerness scale space. */
+  VlCovDetMethod method ;      /**< feature extraction method. */
+  double peakThreshold ;       /**< peak threshold. */
+  double edgeThreshold ;       /**< edge threshold. */
+  double lapPeakThreshold;     /**< peak threshold for Laplacian scale selection. */
   vl_size targetNumFeatures ;/**< number of features to keep after adaptive non-extrema suppresion. */
   vl_bool useAdaptiveSuppression ; /**< use adaptive non-maximal suppression rather than keeping the bests scores. */
-  vl_size octaveResolution ; /**< resolution of each octave. */
-  vl_index firstOctave ;     /**< index of the first octave. */
+  vl_size octaveResolution ;   /**< resolution of each octave. */
+  vl_index numOctaves ;        /**< number of octaves */
+  vl_index firstOctave ;       /**< index of the first octave. */
+  double baseScale ;           /**< the base scale of the gss. */
+  vl_size maxNumOrientations ; /**< max number of detected orientations. */
 
   double nonExtremaSuppression ;
   vl_size numNonExtremaSuppressed ;
@@ -1488,6 +1492,8 @@ struct _VlCovDet
   float lapPatch [(2*VL_COVDET_LAP_PATCH_RESOLUTION+1)*(2*VL_COVDET_LAP_PATCH_RESOLUTION+1)] ;
   float laplacians [(2*VL_COVDET_LAP_PATCH_RESOLUTION+1)*(2*VL_COVDET_LAP_PATCH_RESOLUTION+1)*VL_COVDET_LAP_NUM_LEVELS] ;
   vl_size numFeaturesWithNumScales [VL_COVDET_MAX_NUM_LAPLACIAN_SCALES + 1] ;
+
+  vl_bool allowPaddedWarping ;
 }  ;
 
 VlEnumerator vlCovdetMethods [VL_COVDET_METHOD_NUM] = {
@@ -1511,7 +1517,10 @@ vl_covdet_new (VlCovDetMethod method)
   VlCovDet * self = vl_calloc(sizeof(VlCovDet),1) ;
   self->method = method ;
   self->octaveResolution = 3 ;
+  self->numOctaves = -1 ;
   self->firstOctave = -1 ;
+  self->baseScale = VL_COVDET_GSS_BASE_SCALE ;
+  self->maxNumOrientations = VL_COVDET_MAX_NUM_ORIENTATIONS ;
   switch (self->method) {
     case VL_COVDET_METHOD_DOG :
       self->peakThreshold = VL_COVDET_DOG_DEF_PEAK_THRESHOLD ;
@@ -1545,6 +1554,7 @@ vl_covdet_new (VlCovDetMethod method)
   self->patchBufferSize = 0 ;
   self->transposed = VL_FALSE ;
   self->aaAccurateSmoothing = VL_COVDET_AA_ACCURATE_SMOOTHING ;
+  self->allowPaddedWarping = VL_TRUE ;
 
   {
     vl_index const w = VL_COVDET_AA_PATCH_RESOLUTION ;
@@ -1701,6 +1711,9 @@ vl_covdet_put_image (VlCovDet * self,
 
   /* (minOctaveSize - 1) 2^lastOctave <= min(width,height) - 1 */
   lastOctave = vl_floor_d(vl_log2_d(VL_MIN((double)width-1,(double)height-1) / (minOctaveSize - 1))) ;
+  if (self->numOctaves > 0) {
+      lastOctave = VL_MIN((vl_index)self->numOctaves - self->firstOctave - 1, lastOctave);
+  }
 
   if (self->method == VL_COVDET_METHOD_DOG) {
     octaveFirstSubdivision = -1 ;
@@ -1718,6 +1731,7 @@ vl_covdet_put_image (VlCovDet * self,
   geom.firstOctave = self->firstOctave ;
   geom.lastOctave = lastOctave ;
   geom.octaveResolution = self->octaveResolution ;
+  geom.baseScale = self->baseScale * pow(2.0, 1.0 / self->octaveResolution) ;
   geom.octaveFirstSubdivision = octaveFirstSubdivision ;
   geom.octaveLastSubdivision = octaveLastSubdivision ;
 
@@ -2346,6 +2360,11 @@ vl_covdet_extract_patch_helper (VlCovDet * self,
       y1 = VL_MAX(y1, y) ;
     }
 
+    if ((x0 < 0 || x1 > (signed)width-1 || y0 < 0 || y1 > (signed)height-1) &&
+        !self->allowPaddedWarping) {
+      return vl_set_last_error(VL_ERR_EOF, "Frame out of image.");
+    }
+
     /* Leave one pixel border for bilinear interpolation. */
     x0i = floor(x0) - 1 ;
     y0i = floor(y0) - 1 ;
@@ -2360,6 +2379,7 @@ vl_covdet_extract_patch_helper (VlCovDet * self,
 
     if (x0i < 0 || x1i > (signed)width-1 ||
         y0i < 0 || y1i > (signed)height-1) {
+     
       vl_index xi, yi ;
 
       /* compute the amount of l,r,t,b padding needed to complete the patch */
@@ -2374,7 +2394,7 @@ vl_covdet_extract_patch_helper (VlCovDet * self,
       vl_size patchBufferSize = patchWidth * patchHeight * sizeof(float) ;
       if (patchBufferSize > self->patchBufferSize) {
         int err = _vl_resize_buffer((void**)&self->patch, &self->patchBufferSize, patchBufferSize) ;
-        if (err) return vl_set_last_error(VL_ERR_ALLOC, NULL) ;
+        if (err) return vl_set_last_error(VL_ERR_ALLOC, "Unable to allocate data.") ;
       }
 
       if (pady0 < patchHeight - pady1) {
@@ -2711,7 +2731,7 @@ vl_covdet_extract_affine_shape (VlCovDet * self)
 {
   vl_index i, j = 0 ;
   vl_size numFeatures = vl_covdet_get_num_features(self) ;
-  VlCovDetFeature * feature = vl_covdet_get_features(self);
+  VlCovDetFeature * feature = (VlCovDetFeature *)vl_covdet_get_features(self);
   for (i = 0 ; i < (signed)numFeatures ; ++i) {
     int status ;
     VlFrameOrientedEllipse adapted ;
@@ -2891,7 +2911,7 @@ vl_covdet_extract_orientations_for_frame (VlCovDet * self,
       *numOrientations += 1 ;
       //VL_PRINTF("%d %g\n", *numOrientations, th) ;
 
-      if (*numOrientations >= VL_COVDET_MAX_NUM_ORIENTATIONS) break ;
+      if (*numOrientations >= self->maxNumOrientations) break ;
     }
   }
 
@@ -3324,6 +3344,68 @@ vl_covdet_set_first_octave (VlCovDet * self, vl_index o)
 }
 
 /* ---------------------------------------------------------------- */
+/** @brief Get the max number of octaves
+ ** @param self object.
+ ** @return maximal number of octaves.
+ **/
+vl_size
+vl_covdet_get_num_octaves (VlCovDet const * self)
+{
+  return self->numOctaves ;
+}
+
+/* ---------------------------------------------------------------- */
+/** @brief Get the GSS base scale
+ ** @param self object.
+ ** @return The base scale.
+ **/
+double
+vl_covdet_get_base_scale (VlCovDet const * self)
+{
+  return self->baseScale ;
+}
+
+/** @brief Set the max number of octaves
+ ** @param self object.
+ ** @param o max number of octaves.
+ **
+ ** Calling this function resets the detector.
+ **/
+void
+vl_covdet_set_num_octaves (VlCovDet * self, vl_size o)
+{
+  self->numOctaves = o ;
+  vl_covdet_reset(self) ;
+}
+
+/** @brief Set the GSS base scale
+ ** @param self object.
+ ** @param s the base scale.
+ **
+ ** Calling this function resets the detector.
+ **/
+void
+vl_covdet_set_base_scale (VlCovDet * self, double s)
+{
+  self->baseScale = s ;
+  vl_covdet_reset(self) ;
+}
+
+/* ---------------------------------------------------------------- */
+
+/** @brief Set the max number of orientations
+ ** @param self object.
+ ** @param m the max number of orientations.
+ **
+ ** Calling this function resets the detector.
+ **/
+void
+vl_covdet_set_max_num_orientations (VlCovDet * self, vl_size m)
+{
+  self->maxNumOrientations = m ;
+}
+
+/* ---------------------------------------------------------------- */
 /** @brief Get the octave resolution.
  ** @param self object.
  ** @return octave resolution.
@@ -3373,6 +3455,18 @@ vl_covdet_set_aa_accurate_smoothing (VlCovDet * self, vl_bool x)
 }
 
 /* ---------------------------------------------------------------- */
+/** @brief Get the max number of orientations
+ ** @param self object.
+ ** @return maximal number of orientations.
+ **/
+vl_size
+vl_covdet_get_max_num_orientations( VlCovDet const * self)
+{
+  return self->maxNumOrientations ;
+}
+
+
+/* ---------------------------------------------------------------- */
 /** @brief Get the non-extrema suppression threshold
  ** @param self object.
  ** @return threshold.
@@ -3420,7 +3514,7 @@ vl_covdet_get_num_features (VlCovDet const * self)
 /** @brief Get the stored frames
  ** @return frames stored in the detector.
  **/
-VlCovDetFeature *
+void *
 vl_covdet_get_features (VlCovDet * self)
 {
   return self->features ;
@@ -3468,4 +3562,27 @@ vl_covdet_get_laplacian_scales_statistics (VlCovDet const * self,
 {
   *numScales = VL_COVDET_MAX_NUM_LAPLACIAN_SCALES ;
   return self->numFeaturesWithNumScales ;
+}
+
+
+
+/* ---------------------------------------------------------------- */
+/** @brief Get wether to compute padded warped patches  
+ ** @param self object.
+ ** @return whether padded warped patches are computed.
+ **/
+vl_bool
+vl_covdet_get_allow_padded_warping (VlCovDet const  * self)
+{
+  return self->allowPaddedWarping ;
+}
+
+/** @brief Set wether to compute padded warped patches  
+ ** @param self object.
+ ** @param t whether padded warped patches are computed.
+ **/
+void
+vl_covdet_set_allow_padded_warping (VlCovDet * self, vl_bool t)
+{
+  self->allowPaddedWarping = t ;
 }
