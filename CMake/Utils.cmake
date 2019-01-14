@@ -5,7 +5,6 @@
 # - This file can be run multiple times, therefore it shouldn't
 #   have any side effects other than defining the functions and macros.
 
-INCLUDE(CheckCXXCompilerFlag)
 INCLUDE(CheckIncludeFile)
 
 # BUILD_SHARED_LIBS is a standard CMake variable, but we declare it here to
@@ -391,7 +390,7 @@ macro(optimize_default_compiler_settings)
 	add_option(ENABLE_SSSE3               "Enable SSSE3 instructions"                                ON   IF (CMAKE_COMPILER_IS_GNUCXX AND (X86 OR X86_64)) )
 	add_option(ENABLE_SSE41               "Enable SSE4.1 instructions"                               ON   IF (FLG_ICC OR CMAKE_COMPILER_IS_GNUCXX AND (X86 OR X86_64)) )
 	add_option(ENABLE_SSE42               "Enable SSE4.2 instructions"                               ON   IF (CMAKE_COMPILER_IS_GNUCXX AND (X86 OR X86_64)) )
-	add_option(ENABLE_AVX                 "Enable AVX instructions"                                  ON )
+	add_option(ENABLE_AVX                 "Enable AVX instructions"                                  OFF )
 	add_option(ENABLE_AVX2                "Enable AVX2 instructions"                                 OFF  IF (CMAKE_COMPILER_IS_GNUCXX AND (X86 OR X86_64)) )
 	add_option(ENABLE_EXTRA_WARNINGS      "Show extra warnings (usually not critical)"               OFF )
 	add_option(ENABLE_NOISY_WARNINGS      "Show all warnings even if they are too noisy"             OFF )
@@ -435,19 +434,14 @@ macro(optimize_default_compiler_settings)
 	set(BUILD_EXTRA_EXE_LINKER_FLAGS_DEBUG "")
 
 	# try to enable C++14/C++11 support
-	check_cxx_compiler_flag("-std=c++14" COMPILER_HAS_CXX14_FLAG)
-	if (COMPILER_HAS_CXX14_FLAG)
-		# update CMAKE_REQUIRED_FLAGS used by CheckCXXSourceCompiles
-		# to include -std=c++14
-		set(CMAKE_CXX_STANDARD 14)
-	else()
-		check_cxx_compiler_flag("-std=c++11" COMPILER_HAS_CXX11_FLAG)
-		if (COMPILER_HAS_CXX11_FLAG)
-			# update CMAKE_REQUIRED_FLAGS used by CheckCXXSourceCompiles
-			# to include -std=c++11
+	foreach(i ${CMAKE_CXX_COMPILE_FEATURES})
+		if("${i}" STREQUAL "cxx_std_14")
+			set(CMAKE_CXX_STANDARD 14)
+			break()
+		elseif("${i}" STREQUAL "cxx_std_11")
 			set(CMAKE_CXX_STANDARD 11)
 		endif()
-	endif()
+	endforeach()
 	if(CLANG AND (CMAKE_CXX_STANDARD EQUAL 11 OR CMAKE_CXX_STANDARD EQUAL 14))
 		set(CMAKE_EXE_LINKER_FLAGS "-stdlib=libc++")
 		add_extra_compiler_option(-stdlib=libc++)
@@ -830,11 +824,23 @@ endmacro()
 
 # Initialize variables needed for a library type project.
 macro(ConfigLibrary)
+	# Set PROJECT_NAME_UPPERCASE and PROJECT_NAME_LOWERCASE variables
+	string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPERCASE)
+	string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWERCASE)
+
+	# The export set for all the targets
+	set(PROJECT_EXPORT ${PROJECT_NAME}EXPORT)
+
+	# Path of the CNake files generated
+	set(PROJECT_CMAKE_FILES ${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY})
+
+	# The RPATH to be used when installing
+	set(CMAKE_INSTALL_RPATH ${INSTALL_LIB_DIR})
+
 	# Offer the user the choice of overriding the installation directories
 	set(INSTALL_LIB_DIR "lib" CACHE PATH "Installation directory for libraries")
 	set(INSTALL_BIN_DIR "bin" CACHE PATH "Installation directory for executables")
-	set(INSTALL_INCLUDEROOT_DIR "include" CACHE PATH "Installation directory for project header files")
-	set(INSTALL_INCLUDE_DIR "${INSTALL_INCLUDEROOT_DIR}/${PROJECT_NAME}" CACHE PATH "Installation directory for header files")
+	set(INSTALL_INCLUDE_DIR "include" CACHE PATH "Installation directory for header files")
 	if(WIN32 AND NOT CYGWIN)
 		set(DEF_INSTALL_CMAKE_DIR "CMake")
 	else()
@@ -843,7 +849,7 @@ macro(ConfigLibrary)
 	set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH "Installation directory for CMake files")
 	 
 	# Make relative paths absolute (needed later on)
-	foreach(p LIB BIN INCLUDEROOT INCLUDE CMAKE)
+	foreach(p LIB BIN INCLUDE CMAKE)
 		set(var INSTALL_${p}_DIR)
 		if(NOT IS_ABSOLUTE "${${var}}")
 			set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")

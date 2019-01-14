@@ -4,7 +4,7 @@
 ########################################################################
 #
 # Project-wide settings
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6.2)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.1.0)
 
 # Find dependencies:
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/CMake/Modules)
@@ -15,6 +15,15 @@ SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/CMake/Mod
 # as ${vlfeat_SOURCE_DIR} and to the root binary directory as
 # ${vlfeat_BINARY_DIR}.
 PROJECT(vlfeat)
+
+# Version variables
+set(MAJOR_VERSION 1)
+set(MINOR_VERSION 0)
+set(PATCH_VERSION 1)
+set(PROJECT_VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})
+
+set(LIBRARY_NAME ${PROJECT_NAME})
+set(LIBRARY_FOLDER ${PROJECT_NAME})
 
 # fix CMake IntDir variable
 if(MSVC AND "${MSVC_VERSION}" STRGREATER "1500")
@@ -87,37 +96,28 @@ if (BUILD_APPS)
 	ADD_SUBDIRECTORY(src)
 endif()
 
-# Add all targets to the build-tree export set
-export(TARGETS vlfeat FILE "${PROJECT_BINARY_DIR}/vlfeatTargets.cmake")
+# This "exports" all targets which have been put into the export set
+install(EXPORT ${PROJECT_EXPORT}
+	DESTINATION ${INSTALL_CMAKE_DIR}
+	FILE ${PROJECT_NAME}Targets.cmake)
 
-# Export the package for use from the build-tree
-# (this registers the build-tree with a global CMake-registry)
-export(PACKAGE vlfeat)
- 
-# Create the vlfeatConfig.cmake and vlfeatConfigVersion files
-# ... for the build tree
-set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}" "${PROJECT_BINARY_DIR}")
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/CMake/vlfeatConfig.cmake.in" "${PROJECT_BINARY_DIR}/vlfeatConfig.cmake" @ONLY)
-# ... for the install tree
-set(CONF_INCLUDE_DIRS "${INSTALL_INCLUDEROOT_DIR}" "${INSTALL_INCLUDE_DIR}")
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/CMake/vlfeatConfig.cmake.in" "${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/vlfeatConfig.cmake" @ONLY)
-# ... for both
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/CMake/vlfeatConfigVersion.cmake.in" "${PROJECT_BINARY_DIR}/vlfeatConfigVersion.cmake" @ONLY)
- 
-# Install the vlfeatConfig.cmake and vlfeatConfigVersion.cmake
+# Create the <package>Config.cmake.in
+configure_file(${CMAKE_SOURCE_DIR}/CMake/Config.cmake.in
+	"${PROJECT_CMAKE_FILES}/${PROJECT_NAME}Config.cmake" @ONLY)
+
+# Create the <package>ConfigVersion.cmake.in
+configure_file(${CMAKE_SOURCE_DIR}/CMake/ConfigVersion.cmake.in
+	"${PROJECT_CMAKE_FILES}/${PROJECT_NAME}ConfigVersion.cmake" @ONLY)
+
+# Install <package>Config.cmake and <package>ConfigVersion.cmake files
 install(FILES
-	"${PROJECT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/vlfeatConfig.cmake"
-	"${PROJECT_BINARY_DIR}/vlfeatConfigVersion.cmake"
+	"${PROJECT_CMAKE_FILES}/${PROJECT_NAME}Config.cmake"
+	"${PROJECT_CMAKE_FILES}/${PROJECT_NAME}ConfigVersion.cmake"
 	DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
 
-# Install the export set for use with the install-tree
-install(EXPORT vlfeatTargets DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
-
-# uninstall target
-configure_file(
-	"${CMAKE_CURRENT_SOURCE_DIR}/CMake/cmake_uninstall.cmake.in"
-	"${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+# Uninstall targets
+configure_file("${CMAKE_SOURCE_DIR}/CMake/Uninstall.cmake.in"
+	"${PROJECT_CMAKE_FILES}/Uninstall.cmake"
 	IMMEDIATE @ONLY)
-
 add_custom_target(uninstall
-	COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+	COMMAND ${CMAKE_COMMAND} -P ${PROJECT_CMAKE_FILES}/Uninstall.cmake)
